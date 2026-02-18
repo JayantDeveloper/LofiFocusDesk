@@ -1,6 +1,27 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { BOARD_STORAGE_KEY, TODO_DIFFICULTY_OPTIONS } from "../constants";
 
-const STORAGE_KEY = "focusdesk-board-todo-items";
+const EDITABLE_FIELDS = new Set(["title", "difficulty", "done"]);
+
+function normalizeDifficulty(value) {
+  return TODO_DIFFICULTY_OPTIONS.includes(value) ? value : "Easy";
+}
+
+function normalizeItem(item) {
+  if (!item || typeof item !== "object") {
+    return null;
+  }
+
+  const id = typeof item.id === "string" && item.id.length > 0 ? item.id : createItemId();
+  const title = typeof item.title === "string" ? item.title : "";
+
+  return {
+    id,
+    title,
+    difficulty: normalizeDifficulty(item.difficulty),
+    done: item.done === true,
+  };
+}
 
 function createItemId() {
   if (globalThis.crypto && typeof globalThis.crypto.randomUUID === "function") {
@@ -13,7 +34,7 @@ export function useBoardTodoItems() {
   const [draggedItemId, setDraggedItemId] = useState(null);
   const [items, setItems] = useState(() => {
     try {
-      const savedItems = window.localStorage.getItem(STORAGE_KEY);
+      const savedItems = window.localStorage.getItem(BOARD_STORAGE_KEY);
       if (!savedItems) {
         return [];
       }
@@ -23,18 +44,14 @@ export function useBoardTodoItems() {
         return [];
       }
 
-      return parsed.map((item) => ({
-        ...item,
-        difficulty: item.difficulty || "Easy",
-        done: item.done ?? false,
-      }));
+      return parsed.map((item) => normalizeItem(item)).filter(Boolean);
     } catch {
       return [];
     }
   });
 
   useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    window.localStorage.setItem(BOARD_STORAGE_KEY, JSON.stringify(items));
   }, [items]);
 
   const deleteItem = useCallback((idToDelete) => {
@@ -42,9 +59,23 @@ export function useBoardTodoItems() {
   }, []);
 
   const updateItem = useCallback((idToUpdate, fieldName, value) => {
+    if (!EDITABLE_FIELDS.has(fieldName)) {
+      return;
+    }
+
     setItems((prevItems) =>
       prevItems.map((item) =>
-        item.id === idToUpdate ? { ...item, [fieldName]: value } : item,
+        item.id === idToUpdate
+          ? {
+              ...item,
+              [fieldName]:
+                fieldName === "difficulty"
+                  ? normalizeDifficulty(value)
+                  : fieldName === "done"
+                    ? value === true
+                    : String(value),
+            }
+          : item,
       ),
     );
   }, []);
@@ -55,7 +86,6 @@ export function useBoardTodoItems() {
       {
         id: createItemId(),
         title: "",
-        content: "",
         difficulty: "Easy",
         done: false,
       },

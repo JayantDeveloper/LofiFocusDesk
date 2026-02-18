@@ -30,16 +30,16 @@ function toClockDisplay(worldHour) {
   };
 }
 
+function getTwilightFactor(sunHeight) {
+  const horizonBand = 0.5;
+  const normalized = Math.max(0, 1 - Math.abs(sunHeight) / horizonBand);
+  return normalized * normalized * (3 - 2 * normalized);
+}
+
 function isEditableTarget(target) {
-  if (!(target instanceof HTMLElement)) {
-    return false;
-  }
-
+  if (!(target instanceof HTMLElement)) return false;
   const editableTags = ["INPUT", "TEXTAREA", "SELECT"];
-  if (editableTags.includes(target.tagName)) {
-    return true;
-  }
-
+  if (editableTags.includes(target.tagName)) return true;
   return target.isContentEditable;
 }
 
@@ -59,21 +59,11 @@ function RoomInteractionHotkeys({
     }
 
     const handlePointerDown = (event) => {
-      if (event.defaultPrevented) {
-        return;
-      }
-
-      if (
-        event.target instanceof Element &&
-        event.target.closest(".focus-board-popup-backdrop")
-      ) {
-        return;
-      }
+      if (event.defaultPrevented) return;
+      if (event.target instanceof Element && event.target.closest(".focus-board-popup-backdrop")) return;
 
       const rect = gl.domElement.getBoundingClientRect();
-      if (rect.width <= 0 || rect.height <= 0) {
-        return;
-      }
+      if (rect.width <= 0 || rect.height <= 0) return;
 
       const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
       const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -82,8 +72,7 @@ function RoomInteractionHotkeys({
 
       const plantHitbox = scene.getObjectByName("desk-plant-hitbox");
       if (plantHitbox && onToggleBoardPopup) {
-        const plantHits = raycaster.intersectObject(plantHitbox, true);
-        if (plantHits.length > 0) {
+        if (raycaster.intersectObject(plantHitbox, true).length > 0) {
           onToggleBoardPopup();
           return;
         }
@@ -91,8 +80,7 @@ function RoomInteractionHotkeys({
 
       const radioHitbox = scene.getObjectByName("desk-radio-hitbox");
       if (radioHitbox && onToggleMusic) {
-        const hits = raycaster.intersectObject(radioHitbox, true);
-        if (hits.length > 0) {
+        if (raycaster.intersectObject(radioHitbox, true).length > 0) {
           onToggleMusic();
           return;
         }
@@ -100,37 +88,19 @@ function RoomInteractionHotkeys({
 
       const calendarHitbox = scene.getObjectByName("wall-calendar-hitbox");
       if (calendarHitbox && onOpenCalendarPopup) {
-        const hits = raycaster.intersectObject(calendarHitbox, true);
-        if (hits.length > 0) {
+        if (raycaster.intersectObject(calendarHitbox, true).length > 0) {
           onOpenCalendarPopup();
         }
       }
     };
 
     const handleKeyDown = (event) => {
-      if (event.defaultPrevented || event.repeat) {
-        return;
-      }
-
-      if (isEditableTarget(event.target)) {
-        return;
-      }
-
+      if (event.defaultPrevented || event.repeat) return;
+      if (isEditableTarget(event.target)) return;
       const key = event.key.toLowerCase();
-      if (key === "r" && onToggleMusic) {
-        event.preventDefault();
-        onToggleMusic();
-        return;
-      }
-      if (key === "t" && onToggleBoardPopup) {
-        event.preventDefault();
-        onToggleBoardPopup();
-        return;
-      }
-      if (key === "c" && onToggleCalendarPopup) {
-        event.preventDefault();
-        onToggleCalendarPopup();
-      }
+      if (key === "r" && onToggleMusic) { event.preventDefault(); onToggleMusic(); return; }
+      if (key === "t" && onToggleBoardPopup) { event.preventDefault(); onToggleBoardPopup(); return; }
+      if (key === "c" && onToggleCalendarPopup) { event.preventDefault(); onToggleCalendarPopup(); }
     };
 
     window.addEventListener("pointerdown", handlePointerDown);
@@ -139,17 +109,7 @@ function RoomInteractionHotkeys({
       window.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [
-    camera,
-    gl.domElement,
-    onOpenCalendarPopup,
-    onToggleBoardPopup,
-    onToggleCalendarPopup,
-    onToggleMusic,
-    pointer,
-    raycaster,
-    scene,
-  ]);
+  }, [camera, gl.domElement, onOpenCalendarPopup, onToggleBoardPopup, onToggleCalendarPopup, onToggleMusic, pointer, raycaster, scene]);
 
   return null;
 }
@@ -165,6 +125,7 @@ export function FocusRoomScene({
   onToggleCalendarPopup,
   onToggleMusic,
 }) {
+  const { scene } = useThree();
   const textures = useFocusTextures();
   const initialWorldHour = useMemo(() => getCurrentLocalHour(), []);
   const initialLampOn = initialWorldHour >= 18 || initialWorldHour < 6;
@@ -172,58 +133,142 @@ export function FocusRoomScene({
   const worldHourRef = useRef(initialWorldHour);
   const lastDisplayedHourRef = useRef(Math.floor(initialWorldHour) % 24);
   const lampOnRef = useRef(initialLampOn);
-  const [clockDisplay, setClockDisplay] = useState(() =>
-    toClockDisplay(initialWorldHour),
-  );
+  const [clockDisplay, setClockDisplay] = useState(() => toClockDisplay(initialWorldHour));
   const [isLampOn, setIsLampOn] = useState(initialLampOn);
 
   const ambientLightRef = useRef(null);
   const hemisphereLightRef = useRef(null);
   const sunlightRef = useRef(null);
+  const skyFillRef = useRef(null);
   const moonlightRef = useRef(null);
 
-  const ambientNightColor = useMemo(() => new Color("#e8ddd1"), []);
-  const ambientDayColor = useMemo(() => new Color("#f3e7d3"), []);
-  const hemisphereNightColor = useMemo(() => new Color("#ccd7ea"), []);
-  const hemisphereDayColor = useMemo(() => new Color("#f4ebdf"), []);
-  const groundNightColor = useMemo(() => new Color("#4e4339"), []);
-  const groundDayColor = useMemo(() => new Color("#5f4f42"), []);
-  const sunlightWarmColor = useMemo(() => new Color("#ffe5c4"), []);
-  const moonCoolColor = useMemo(() => new Color("#97b6ea"), []);
+  const ambientNightColor     = useMemo(() => new Color("#b7c8e1"), []);
+  const ambientTwilightColor  = useMemo(() => new Color("#dfc0ba"), []);
+  const ambientDayColor       = useMemo(() => new Color("#f6e2c6"), []);
 
-  useFrame((state) => {
-    const worldHour = getWorldHour(
-      simulationStartHourRef.current,
-      state.clock.getElapsedTime(),
-    );
+  const hemisphereNightColor  = useMemo(() => new Color("#97afcf"), []);
+  const hemisphereTwilightColor = useMemo(() => new Color("#efb0be"), []);
+  const hemisphereDayColor    = useMemo(() => new Color("#ffe1bf"), []);
+  const groundNightColor      = useMemo(() => new Color("#323a48"), []);
+  const groundTwilightColor   = useMemo(() => new Color("#5d4b4c"), []);
+  const groundDayColor        = useMemo(() => new Color("#705743"), []);
+
+  const skyNightColor         = useMemo(() => new Color("#080d16"), []);
+  const skyTwilightColor      = useMemo(() => new Color("#f5a2b7"), []);
+  const skyDayColor           = useMemo(() => new Color("#cce9ff"), []);
+  const fogNightColor         = useMemo(() => new Color("#1a1c25"), []);
+  const fogTwilightColor      = useMemo(() => new Color("#d39ea6"), []);
+  const fogDayColor           = useMemo(() => new Color("#e4d8cb"), []);
+
+  const sunNoonColor          = useMemo(() => new Color("#fff4d6"), []);
+  const sunMorningColor       = useMemo(() => new Color("#ffc87a"), []);
+  const sunLowColor           = useMemo(() => new Color("#ff8c42"), []);
+  const sunTwilightColor      = useMemo(() => new Color("#ff5e30"), []);
+  const skyFillNightColor     = useMemo(() => new Color("#7f9fcb"), []);
+  const skyFillDayColor       = useMemo(() => new Color("#c6dcff"), []);
+  const skyFillTwilightColor  = useMemo(() => new Color("#f0b8c8"), []);
+
+  const scratchColor          = useMemo(() => new Color(), []);
+  const skyFillScratchColor   = useMemo(() => new Color(), []);
+  const targetSkyColorRef     = useRef(new Color());
+  const targetFogColorRef     = useRef(new Color());
+
+  useFrame((state, delta) => {
+    const worldHour = getWorldHour(simulationStartHourRef.current, state.clock.getElapsedTime());
     worldHourRef.current = worldHour;
 
     const solarPhase = ((worldHour - 6) / 24) * Math.PI * 2;
-    const dayFactor = Math.max(0, Math.sin(solarPhase));
-    const nightFactor = Math.max(0, -Math.sin(solarPhase));
+    const sunHeight = Math.sin(solarPhase);
+    const dayFactor = Math.max(0, sunHeight);
+    const nightFactor = Math.max(0, -sunHeight);
+    const twilightFactor = getTwilightFactor(sunHeight);
+    const isSunActive = sunHeight >= 0;
+
+    if (scene.background instanceof Color) {
+      targetSkyColorRef.current
+        .copy(skyNightColor)
+        .lerp(skyTwilightColor, twilightFactor)
+        .lerp(skyDayColor, dayFactor);
+      scene.background.lerp(targetSkyColorRef.current, Math.min(1, delta * 0.55));
+    }
+
+    if (scene.fog && "color" in scene.fog) {
+      targetFogColorRef.current
+        .copy(fogNightColor)
+        .lerp(fogTwilightColor, twilightFactor)
+        .lerp(fogDayColor, dayFactor);
+      scene.fog.color.lerp(targetFogColorRef.current, Math.min(1, delta * 0.6));
+    }
 
     if (ambientLightRef.current) {
-      ambientLightRef.current.intensity = 0.26 + dayFactor * 0.13 + nightFactor * 0.03;
-      ambientLightRef.current.color.copy(ambientNightColor).lerp(ambientDayColor, dayFactor);
+      ambientLightRef.current.intensity =
+        0.23 + dayFactor * 0.15 + twilightFactor * 0.06 + nightFactor * 0.04;
+      ambientLightRef.current.color
+        .copy(ambientNightColor)
+        .lerp(ambientTwilightColor, twilightFactor)
+        .lerp(ambientDayColor, dayFactor);
     }
 
     if (hemisphereLightRef.current) {
-      hemisphereLightRef.current.intensity = 0.28 + dayFactor * 0.14 + nightFactor * 0.03;
+      hemisphereLightRef.current.intensity =
+        0.25 + dayFactor * 0.17 + twilightFactor * 0.08 + nightFactor * 0.03;
       hemisphereLightRef.current.color
         .copy(hemisphereNightColor)
+        .lerp(hemisphereTwilightColor, twilightFactor)
         .lerp(hemisphereDayColor, dayFactor);
       hemisphereLightRef.current.groundColor
         .copy(groundNightColor)
+        .lerp(groundTwilightColor, twilightFactor)
         .lerp(groundDayColor, dayFactor);
     }
 
     if (sunlightRef.current) {
-      sunlightRef.current.intensity = 0.08 + dayFactor * 0.82;
-      sunlightRef.current.color.copy(moonCoolColor).lerp(sunlightWarmColor, dayFactor);
+      const flicker = 1 + Math.sin(state.clock.getElapsedTime() * 1.7) * 0.006
+                        + Math.sin(state.clock.getElapsedTime() * 3.1) * 0.003;
+      sunlightRef.current.intensity =
+        isSunActive
+          ? (dayFactor * 1.05 + twilightFactor * 0.35) * flicker
+          : 0;
+
+      const lowBand  = Math.min(1, dayFactor / 0.18);
+      const midBand  = Math.max(0, Math.min(1, (dayFactor - 0.18) / 0.25));
+      const highBand = Math.max(0, Math.min(1, (dayFactor - 0.42) / 0.3));
+
+      scratchColor
+        .copy(sunTwilightColor)
+        .lerp(sunLowColor,   lowBand)
+        .lerp(sunMorningColor, midBand)
+        .lerp(sunNoonColor,  highBand);
+
+      scratchColor.lerp(sunTwilightColor, twilightFactor * 0.55);
+
+      sunlightRef.current.color.lerp(scratchColor, Math.min(1, delta * 1.5));
+
+      const sunAngle = solarPhase;
+      const cosElev = Math.cos(sunAngle);
+      const sinElev = Math.sin(sunAngle);
+      sunlightRef.current.position.set(
+        cosElev * 3.5,
+        Math.max(0.3, sinElev * 6.0),
+        2.5 + sinElev * 1.2
+      );
+    }
+
+    if (skyFillRef.current) {
+      skyFillRef.current.intensity =
+        isSunActive
+          ? dayFactor * 0.22 + twilightFactor * 0.12
+          : nightFactor * 0.07;
+      skyFillScratchColor
+        .copy(skyFillNightColor)
+        .lerp(skyFillTwilightColor, twilightFactor)
+        .lerp(skyFillDayColor, dayFactor);
+      skyFillRef.current.color.lerp(skyFillScratchColor, Math.min(1, delta * 1.2));
     }
 
     if (moonlightRef.current) {
-      moonlightRef.current.intensity = 0.04 + nightFactor * 0.22;
+      moonlightRef.current.intensity =
+        isSunActive ? 0 : nightFactor * 0.24 + twilightFactor * 0.06;
     }
 
     const nextDisplay = toClockDisplay(worldHour);
@@ -241,15 +286,13 @@ export function FocusRoomScene({
 
   useEffect(() => {
     return () => {
-      Object.values(textures).forEach((texture) => {
-        texture.dispose();
-      });
+      Object.values(textures).forEach((texture) => texture.dispose());
     };
   }, [textures]);
 
   return (
     <>
-      <color attach="background" args={["#e8ddd1"]} />
+      <color attach="background" args={["#cce9ff"]} />
       <fog attach="fog" args={["#e4d8cb", 8, 18]} />
 
       <ambientLight ref={ambientLightRef} color="#f3e7d3" intensity={0.35} />
@@ -274,7 +317,16 @@ export function FocusRoomScene({
         shadow-camera-right={6}
         shadow-camera-top={5}
         shadow-bias={-0.0008}
+        shadow-normalBias={0.015}
       />
+
+      <directionalLight
+        ref={skyFillRef}
+        color="#add6f7"
+        intensity={0.28}
+        position={[0, 2.4, 5.5]}
+      />
+
       <directionalLight
         ref={moonlightRef}
         color="#9abcf2"
@@ -288,7 +340,6 @@ export function FocusRoomScene({
         clockTime={clockDisplay.time}
         isLampOn={isLampOn}
         isRadioOn={isMusicPlaying}
-        textures={textures}
       />
       <WallDecor
         boardPomodoro={boardPomodoro}
@@ -303,7 +354,6 @@ export function FocusRoomScene({
         onToggleCalendarPopup={onToggleCalendarPopup}
         onToggleMusic={onToggleMusic}
       />
-
       <SeatedCameraControls enabled={!isCameraLocked} />
     </>
   );

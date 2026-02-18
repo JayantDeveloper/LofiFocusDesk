@@ -1,6 +1,8 @@
 import { useCallback, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import GoogleCalendar from "./components/GoogleCalendar";
+import { FocusRoomHud } from "./components/FocusRoomHud";
+import { FocusRoomPopup } from "./components/FocusRoomPopup";
 import { RoomMusicPlayer } from "./components/RoomMusicPlayer";
 import { FocusTodoBoardApp } from "./focus-room/todo-board/FocusTodoBoardApp";
 import { FocusRoomScene } from "./focus-room/FocusRoomScene";
@@ -39,12 +41,7 @@ function App() {
   return (
     <div className="focus-room-app">
       <WelcomeOverlay />
-      <div className="focus-room-hud" aria-live="polite">
-        <p className="focus-room-title">Binds</p>
-        <p className="focus-room-hint">T - Todo List / Plant</p>
-        <p className="focus-room-hint">C - Calendar / Wall Calendar</p>
-        <p className="focus-room-hint">R - Music / Radio</p>
-      </div>
+      <FocusRoomHud />
       <Canvas
         shadows
         dpr={[1, 1.5]}
@@ -68,43 +65,17 @@ function App() {
         />
       </Canvas>
 
-      <div
-        aria-hidden={!isBoardPopupOpen}
-        className={`focus-board-popup-backdrop ${isBoardPopupOpen ? "is-open" : "is-closed"}`}
-        onClick={() => setIsBoardPopupOpen(false)}
-      >
-        <div className="focus-board-popup-panel" onClick={(event) => event.stopPropagation()}>
-          <button
-            className="focus-board-popup-close"
-            onClick={() => setIsBoardPopupOpen(false)}
-            type="button"
-          >
-            Close
-          </button>
-          <div className="focus-board-popup-content">
-            <FocusTodoBoardApp boardPomodoro={boardPomodoro} boardTodo={boardTodo} />
-          </div>
-        </div>
-      </div>
+      <FocusRoomPopup isOpen={isBoardPopupOpen} onClose={() => setIsBoardPopupOpen(false)}>
+        <FocusTodoBoardApp boardPomodoro={boardPomodoro} boardTodo={boardTodo} />
+      </FocusRoomPopup>
 
-      <div
-        aria-hidden={!isCalendarPopupOpen}
-        className={`focus-board-popup-backdrop ${isCalendarPopupOpen ? "is-open" : "is-closed"}`}
-        onClick={() => setIsCalendarPopupOpen(false)}
+      <FocusRoomPopup
+        contentClassName="focus-calendar-popup-content"
+        isOpen={isCalendarPopupOpen}
+        onClose={() => setIsCalendarPopupOpen(false)}
       >
-        <div className="focus-board-popup-panel" onClick={(event) => event.stopPropagation()}>
-          <button
-            className="focus-board-popup-close"
-            onClick={() => setIsCalendarPopupOpen(false)}
-            type="button"
-          >
-            Close
-          </button>
-          <div className="focus-board-popup-content focus-calendar-popup-content">
-            <GoogleCalendar />
-          </div>
-        </div>
-      </div>
+        <GoogleCalendar />
+      </FocusRoomPopup>
 
       <RoomMusicPlayer isPlaying={isMusicPlaying} />
     </div>

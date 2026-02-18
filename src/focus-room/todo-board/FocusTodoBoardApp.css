@@ -127,7 +127,6 @@
 }
 
 .focus-board-item-title-input,
-.focus-board-item-content-input,
 .focus-board-item-difficulty-input {
   margin: 0;
   border: 1px solid var(--border);
@@ -141,21 +140,15 @@
 }
 
 .focus-board-item-title-input {
-  flex: 1.2 1 0;
-}
-
-.focus-board-item-content-input {
-  flex: 1.7 1 0;
-  resize: none;
-  line-height: 1.4;
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .focus-board-item-difficulty-input {
-  flex: 0.95 1 0;
+  flex: 0 0 92px;
 }
 
 .focus-board-item-title-input:focus,
-.focus-board-item-content-input:focus,
 .focus-board-item-difficulty-input:focus {
   outline: none;
   border-color: var(--orange);

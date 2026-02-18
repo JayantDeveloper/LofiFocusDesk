@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Color, DoubleSide, MeshBasicMaterial } from "three";
+import { AdditiveBlending, Color, DoubleSide, MeshBasicMaterial } from "three";
 
 const CITY_BUILDINGS = [
   {
@@ -199,30 +199,158 @@ const OUTSIDE_CLUSTER_Z_SHIFT = -0.92;
 const BUILDING_HEIGHT_SCALE = 0.75;
 const MIN_BUILDING_WIDTH = 0.38;
 const MIN_BUILDING_DEPTH = 0.48;
+const FRONT_WINDOW_INSET = 0.018;
+const SIDE_WINDOW_INSET = 0.018;
+const SUN_RAY_LAYER_COUNT = 32;
+const SUN_RAY_RANDOM_SEED = 42891;
 const SUN_X = 0.46;
 const SUN_Z = 1.48;
 const SUN_Y = WINDOW_CENTER_Y + 1.02;
 
+function createSeededRandom(seed) {
+  let state = seed >>> 0;
+  return (min = 0, max = 1) => {
+    state = (1664525 * state + 1013904223) >>> 0;
+    return min + ((state / 4294967296) * (max - min));
+  };
+}
+
+function createSunRayLayers() {
+  const random = createSeededRandom(SUN_RAY_RANDOM_SEED);
+  return Array.from({ length: SUN_RAY_LAYER_COUNT }, (_, index) => {
+    const t = index / Math.max(1, SUN_RAY_LAYER_COUNT - 1);
+    const inverseT = 1 - t;
+
+    return {
+      baseOpacity: (0.013 + inverseT * 0.01) * random(0.86, 1.14),
+      driftX: random(0.004, 0.016),
+      driftY: random(0.002, 0.01),
+      driftZ: random(0.001, 0.008),
+      height: 0.14 + t * 0.64 + random(-0.02, 0.03),
+      phase: random(0, Math.PI * 2),
+      position: [
+        WINDOW_FRAME_X + 0.18 + t * 0.95 + random(-0.04, 0.04),
+        WINDOW_CENTER_Y + 0.26 - t * 0.22 + random(-0.05, 0.05),
+        WINDOW_CENTER_Z + random(-0.24, 0.24),
+      ],
+      rotation: [
+        0.02 + random(-0.06, 0.06),
+        -0.28 + random(-0.15, 0.15),
+        random(-0.15, 0.15),
+      ],
+      width: 0.52 + t * 3.2 + random(-0.08, 0.08),
+    };
+  });
+}
+
+function getTwilightFactor(sunHeight) {
+  const horizonBand = 0.5;
+  const normalized = Math.max(0, 1 - Math.abs(sunHeight) / horizonBand);
+  return normalized * normalized * (3 - 2 * normalized);
+}
+
+function CityBuilding({ building, frontWindowMaterial, sideWindowMaterial }) {
+  const scaledHeight = building.height * BUILDING_HEIGHT_SCALE;
+  const scaledWidth = Math.max(building.width, MIN_BUILDING_WIDTH);
+  const scaledDepth = Math.max(building.depth, MIN_BUILDING_DEPTH);
+  const windowRows = Math.max(3, Math.floor(scaledHeight / 0.24));
+  const windowColsFront = Math.max(2, Math.floor(scaledWidth / 0.1));
+  const windowColsSide = Math.max(2, Math.floor(scaledDepth / 0.11));
+  const yStep = windowRows > 1 ? (scaledHeight - 0.34) / (windowRows - 1) : 0;
+  const zStepFront = windowColsFront > 1 ? (scaledWidth * 0.64) / (windowColsFront - 1) : 0;
+  const xStepSide = windowColsSide > 1 ? (scaledDepth * 0.62) / (windowColsSide - 1) : 0;
+
+  return (
+    <group position={[building.x, 0, building.z]}>
+      <mesh castShadow receiveShadow position={[0, scaledHeight * 0.5, 0]}>
+        <boxGeometry args={[scaledDepth, scaledHeight, scaledWidth]} />
+        <meshStandardMaterial color={building.color} roughness={0.88} />
+
+        <group position={[0, -scaledHeight * 0.5, 0]}>
+          {Array.from({ length: windowRows }).map((_, row) => (
+            <group key={`${building.id}-row-${row}`}>
+              {Array.from({ length: windowColsFront }).map((__, column) => (
+                <mesh
+                  key={`${building.id}-front-${row}-${column}`}
+                  frustumCulled={false}
+                  material={frontWindowMaterial}
+                  position={[
+                    scaledDepth * 0.5 + FRONT_WINDOW_INSET,
+                    0.16 + row * yStep,
+                    -scaledWidth * 0.32 + column * zStepFront,
+                  ]}
+                >
+                  <boxGeometry args={[0.02, 0.048, 0.036]} />
+                </mesh>
+              ))}
+
+              {Array.from({ length: windowColsSide }).map((__, column) => (
+                <mesh
+                  key={`${building.id}-side-${row}-${column}`}
+                  frustumCulled={false}
+                  material={sideWindowMaterial}
+                  position={[
+                    -scaledDepth * 0.31 + column * xStepSide,
+                    0.16 + row * yStep,
+                    scaledWidth * 0.5 + SIDE_WINDOW_INSET,
+                  ]}
+                >
+                  <boxGeometry args={[0.032, 0.048, 0.02]} />
+                </mesh>
+              ))}
+            </group>
+          ))}
+        </group>
+      </mesh>
+
+      <mesh castShadow receiveShadow position={[0, scaledHeight + building.roof * 0.5, 0]}>
+        <boxGeometry args={[scaledDepth * 0.72, building.roof, scaledWidth * 0.72]} />
+        <meshStandardMaterial color={building.accent} roughness={0.82} />
+      </mesh>
+
+      {building.antenna ? (
+        <mesh
+          castShadow
+          position={[0, scaledHeight + building.roof + building.antenna * 0.5, 0]}
+        >
+          <cylinderGeometry args={[0.006, 0.006, building.antenna, 10]} />
+          <meshStandardMaterial color="#b7bec8" roughness={0.4} metalness={0.7} />
+        </mesh>
+      ) : null}
+    </group>
+  );
+}
+
 export function RoomShell({ textures, worldHourRef }) {
   const skylineMaterialRef = useRef(null);
   const windowGlassMaterialRef = useRef(null);
+  const skylineTargetColorRef = useRef(new Color());
+  const glassTargetColorRef = useRef(new Color());
   const sunRef = useRef(null);
   const sunGlowMaterialRef = useRef(null);
   const sunLightRef = useRef(null);
   const moonRef = useRef(null);
   const moonGlowMaterialRef = useRef(null);
   const moonLightRef = useRef(null);
-  const sunRayMaterialARef = useRef(null);
-  const sunRayMaterialBRef = useRef(null);
-  const sunRayMaterialCRef = useRef(null);
+  const sunRayMeshRefs = useRef([]);
+  const sunRayMaterialRefs = useRef([]);
   const daySkyColor = useMemo(() => new Color("#bfe4ff"), []);
+  const twilightSkyColor = useMemo(() => new Color("#f6a2b4"), []);
   const nightSkyColor = useMemo(() => new Color("#010204"), []);
   const dayGlassColor = useMemo(() => new Color("#a5bfd6"), []);
   const nightGlassColor = useMemo(() => new Color("#223246"), []);
+  const sunRayDayColor = useMemo(() => new Color("#ffe3b5"), []);
+  const sunRayTwilightColor = useMemo(() => new Color("#ff9e5a"), []);
+  const sunRayColorScratch = useMemo(() => new Color(), []);
+  const sunRayLayers = useMemo(() => createSunRayLayers(), []);
   const frontWindowMaterial = useMemo(
     () =>
       new MeshBasicMaterial({
         color: "#dcecff",
+        depthWrite: false,
+        polygonOffset: true,
+        polygonOffsetFactor: -1,
+        polygonOffsetUnits: -1,
         transparent: true,
         opacity: 0.56,
       }),
@@ -232,6 +360,10 @@ export function RoomShell({ textures, worldHourRef }) {
     () =>
       new MeshBasicMaterial({
         color: "#d6e7fb",
+        depthWrite: false,
+        polygonOffset: true,
+        polygonOffsetFactor: -1,
+        polygonOffsetUnits: -1,
         transparent: true,
         opacity: 0.44,
       }),
@@ -245,12 +377,14 @@ export function RoomShell({ textures, worldHourRef }) {
     };
   }, [frontWindowMaterial, sideWindowMaterial]);
 
-  useFrame(() => {
+  useFrame((state, delta) => {
     const worldHour = worldHourRef?.current ?? 12;
     const solarAngle = ((worldHour - 6) / 24) * Math.PI * 2;
     const sunHeight = Math.sin(solarAngle);
-    const dayFactor = Math.min(1, Math.max(0, (sunHeight + 0.15) / 1.15));
-    const nightFactor = 1 - dayFactor;
+    const dayFactor = Math.max(0, sunHeight);
+    const nightFactor = Math.max(0, -sunHeight);
+    const twilightFactor = getTwilightFactor(sunHeight);
+    const isSunVisible = sunHeight >= 0;
     const isBuildingLightsOn = worldHour >= 18 || worldHour < 6;
 
     const orbitX = SUN_X + Math.cos(solarAngle) * 0.82;
@@ -259,17 +393,21 @@ export function RoomShell({ textures, worldHourRef }) {
 
     if (sunRef.current) {
       sunRef.current.position.set(orbitX, orbitY, orbitZ);
-      sunRef.current.visible = dayFactor > 0.015;
-      sunRef.current.material.emissiveIntensity = dayFactor * 2.8;
+      sunRef.current.visible = isSunVisible;
+      sunRef.current.material.emissiveIntensity = isSunVisible
+        ? dayFactor * 2.8 + twilightFactor * 0.75
+        : 0;
     }
 
     if (sunGlowMaterialRef.current) {
-      sunGlowMaterialRef.current.setValues({ opacity: dayFactor * 0.27 });
+      sunGlowMaterialRef.current.setValues({
+        opacity: isSunVisible ? dayFactor * 0.27 + twilightFactor * 0.12 : 0,
+      });
     }
 
     if (sunLightRef.current) {
       sunLightRef.current.position.set(orbitX, orbitY, orbitZ);
-      sunLightRef.current.intensity = dayFactor * 7.1;
+      sunLightRef.current.intensity = isSunVisible ? dayFactor * 7.1 + twilightFactor * 1.2 : 0;
     }
 
     const moonAngle = solarAngle + Math.PI;
@@ -279,42 +417,82 @@ export function RoomShell({ textures, worldHourRef }) {
 
     if (moonRef.current) {
       moonRef.current.position.set(moonX, moonY, moonZ);
-      moonRef.current.visible = nightFactor > 0.015;
-      moonRef.current.material.emissiveIntensity = nightFactor * 0.34;
+      moonRef.current.visible = !isSunVisible;
+      moonRef.current.material.emissiveIntensity = !isSunVisible
+        ? nightFactor * 0.34 + twilightFactor * 0.14
+        : 0;
     }
 
     if (moonGlowMaterialRef.current) {
-      moonGlowMaterialRef.current.setValues({ opacity: nightFactor * 0.14 });
+      moonGlowMaterialRef.current.setValues({
+        opacity: !isSunVisible ? nightFactor * 0.14 + twilightFactor * 0.06 : 0,
+      });
     }
 
     if (moonLightRef.current) {
       moonLightRef.current.position.set(moonX, moonY, moonZ);
-      moonLightRef.current.intensity = nightFactor * 1.6;
+      moonLightRef.current.intensity = !isSunVisible ? nightFactor * 1.6 + twilightFactor * 0.3 : 0;
     }
 
     if (skylineMaterialRef.current) {
-      skylineMaterialRef.current.color
+      skylineTargetColorRef.current
         .copy(nightSkyColor)
+        .lerp(twilightSkyColor, twilightFactor)
         .lerp(daySkyColor, dayFactor);
+      skylineMaterialRef.current.color.lerp(
+        skylineTargetColorRef.current,
+        Math.min(1, delta * 0.55),
+      );
     }
 
     if (windowGlassMaterialRef.current) {
-      windowGlassMaterialRef.current.color
+      glassTargetColorRef.current
         .copy(nightGlassColor)
-        .lerp(dayGlassColor, dayFactor);
-      windowGlassMaterialRef.current.setValues({ opacity: 0.07 + dayFactor * 0.2 });
+        .lerp(dayGlassColor, Math.min(1, dayFactor + twilightFactor * 0.2));
+      windowGlassMaterialRef.current.color.lerp(
+        glassTargetColorRef.current,
+        Math.min(1, delta * 0.8),
+      );
+      windowGlassMaterialRef.current.setValues({
+        opacity: 0.07 + dayFactor * 0.2 + twilightFactor * 0.04,
+      });
     }
 
-    const sunRayStrength = Math.pow(dayFactor, 1.25);
-    if (sunRayMaterialARef.current) {
-      sunRayMaterialARef.current.setValues({ opacity: 0.13 * sunRayStrength });
-    }
-    if (sunRayMaterialBRef.current) {
-      sunRayMaterialBRef.current.setValues({ opacity: 0.11 * sunRayStrength });
-    }
-    if (sunRayMaterialCRef.current) {
-      sunRayMaterialCRef.current.setValues({ opacity: 0.09 * sunRayStrength });
-    }
+    const sunRayStrength = isSunVisible
+      ? Math.min(1, Math.pow(dayFactor, 1.25) + twilightFactor * 0.38)
+      : 0;
+    sunRayColorScratch
+      .copy(sunRayDayColor)
+      .lerp(sunRayTwilightColor, Math.min(1, twilightFactor * 0.75));
+    const elapsedSeconds = state.clock.getElapsedTime();
+    sunRayLayers.forEach((layer, index) => {
+      const mesh = sunRayMeshRefs.current[index];
+      const material = sunRayMaterialRefs.current[index];
+      if (!mesh || !material) {
+        return;
+      }
+
+      if (sunRayStrength <= 0.001) {
+        mesh.visible = false;
+        return;
+      }
+
+      mesh.visible = true;
+      const driftPhase = elapsedSeconds * 0.12 + layer.phase;
+      mesh.position.set(
+        layer.position[0] + Math.sin(driftPhase) * layer.driftX,
+        layer.position[1] + Math.cos(driftPhase * 0.9) * layer.driftY,
+        layer.position[2] + Math.sin(driftPhase * 0.7) * layer.driftZ,
+      );
+      mesh.rotation.set(
+        layer.rotation[0] + Math.cos(driftPhase * 0.4) * 0.007,
+        layer.rotation[1],
+        layer.rotation[2] + Math.sin(driftPhase * 0.6) * 0.015,
+      );
+
+      material.opacity = layer.baseOpacity * sunRayStrength;
+      material.color.copy(sunRayColorScratch);
+    });
 
     if (isBuildingLightsOn) {
       frontWindowMaterial.color.set("#ffd86a");
@@ -480,81 +658,14 @@ export function RoomShell({ textures, worldHourRef }) {
             position={[SUN_X, SUN_Y, SUN_Z]}
           />
 
-          {CITY_BUILDINGS.map((building) => {
-            const scaledHeight = building.height * BUILDING_HEIGHT_SCALE;
-            const scaledWidth = Math.max(building.width, MIN_BUILDING_WIDTH);
-            const scaledDepth = Math.max(building.depth, MIN_BUILDING_DEPTH);
-            const windowRows = Math.max(3, Math.floor(scaledHeight / 0.24));
-            const windowColsFront = Math.max(2, Math.floor(scaledWidth / 0.1));
-            const windowColsSide = Math.max(2, Math.floor(scaledDepth / 0.11));
-            const yStep = windowRows > 1 ? (scaledHeight - 0.34) / (windowRows - 1) : 0;
-            const zStepFront =
-              windowColsFront > 1 ? (scaledWidth * 0.64) / (windowColsFront - 1) : 0;
-            const xStepSide =
-              windowColsSide > 1 ? (scaledDepth * 0.62) / (windowColsSide - 1) : 0;
-
-            return (
-              <group key={building.id} position={[building.x, 0, building.z]}>
-                <mesh castShadow receiveShadow position={[0, scaledHeight * 0.5, 0]}>
-                  <boxGeometry args={[scaledDepth, scaledHeight, scaledWidth]} />
-                  <meshStandardMaterial color={building.color} roughness={0.88} />
-                </mesh>
-
-                <mesh castShadow receiveShadow position={[0, scaledHeight + building.roof * 0.5, 0]}>
-                  <boxGeometry
-                    args={[scaledDepth * 0.72, building.roof, scaledWidth * 0.72]}
-                  />
-                  <meshStandardMaterial color={building.accent} roughness={0.82} />
-                </mesh>
-
-                {Array.from({ length: windowRows }).map((_, row) => (
-                  <group key={`${building.id}-row-${row}`}>
-                    {Array.from({ length: windowColsFront }).map((__, column) => (
-                      <mesh
-                        key={`${building.id}-front-${row}-${column}`}
-                        material={frontWindowMaterial}
-                        position={[
-                          scaledDepth * 0.5 + 0.007,
-                          0.16 + row * yStep,
-                          -scaledWidth * 0.32 + column * zStepFront,
-                        ]}
-                      >
-                        <boxGeometry args={[0.012, 0.048, 0.036]} />
-                      </mesh>
-                    ))}
-
-                    {Array.from({ length: windowColsSide }).map((__, column) => (
-                      <mesh
-                        key={`${building.id}-side-${row}-${column}`}
-                        material={sideWindowMaterial}
-                        position={[
-                          -scaledDepth * 0.31 + column * xStepSide,
-                          0.16 + row * yStep,
-                          scaledWidth * 0.5 + 0.007,
-                        ]}
-                      >
-                        <boxGeometry args={[0.032, 0.048, 0.01]} />
-                      </mesh>
-                    ))}
-                  </group>
-                ))}
-
-                {building.antenna ? (
-                  <mesh
-                    castShadow
-                    position={[
-                      0,
-                      scaledHeight + building.roof + building.antenna * 0.5,
-                      0,
-                    ]}
-                  >
-                    <cylinderGeometry args={[0.006, 0.006, building.antenna, 10]} />
-                    <meshStandardMaterial color="#b7bec8" roughness={0.4} metalness={0.7} />
-                  </mesh>
-                ) : null}
-              </group>
-            );
-          })}
+          {CITY_BUILDINGS.map((building) => (
+            <CityBuilding
+              key={building.id}
+              building={building}
+              frontWindowMaterial={frontWindowMaterial}
+              sideWindowMaterial={sideWindowMaterial}
+            />
+          ))}
 
           <mesh receiveShadow position={[-0.38, 0.04, 0]}>
             <boxGeometry args={[0.54, 0.05, 2.9]} />
@@ -569,41 +680,31 @@ export function RoomShell({ textures, worldHourRef }) {
       </group>
 
       <group>
-        <mesh position={[-3.28, 1.56, -1.08]} rotation={[0.05, -0.2, -0.08]}>
-          <planeGeometry args={[2.75, 0.44]} />
-          <meshBasicMaterial
-            ref={sunRayMaterialARef}
-            color="#ffdcb0"
-            transparent
-            opacity={0.13}
-            side={DoubleSide}
-            depthWrite={false}
-          />
-        </mesh>
-
-        <mesh position={[-3.18, 1.45, -0.78]} rotation={[0.01, -0.12, -0.02]}>
-          <planeGeometry args={[2.55, 0.38]} />
-          <meshBasicMaterial
-            ref={sunRayMaterialBRef}
-            color="#ffd8aa"
-            transparent
-            opacity={0.11}
-            side={DoubleSide}
-            depthWrite={false}
-          />
-        </mesh>
-
-        <mesh position={[-3.06, 1.33, -0.5]} rotation={[-0.03, -0.06, 0.04]}>
-          <planeGeometry args={[2.3, 0.32]} />
-          <meshBasicMaterial
-            ref={sunRayMaterialCRef}
-            color="#ffd19a"
-            transparent
-            opacity={0.09}
-            side={DoubleSide}
-            depthWrite={false}
-          />
-        </mesh>
+        {sunRayLayers.map((layer, index) => (
+          <mesh
+            key={`sun-ray-layer-${index}`}
+            frustumCulled={false}
+            position={layer.position}
+            ref={(mesh) => {
+              sunRayMeshRefs.current[index] = mesh;
+            }}
+            renderOrder={12}
+            rotation={layer.rotation}
+          >
+            <planeGeometry args={[layer.width, layer.height]} />
+            <meshBasicMaterial
+              blending={AdditiveBlending}
+              color="#ffe3b5"
+              depthWrite={false}
+              opacity={0}
+              ref={(material) => {
+                sunRayMaterialRefs.current[index] = material;
+              }}
+              side={DoubleSide}
+              transparent
+            />
+          </mesh>
+        ))}
       </group>
     </group>
   );

@@ -1,0 +1,18 @@
+const HUD_BINDS = [
+  "T - Todo List / Plant",
+  "C - Calendar / Wall Calendar",
+  "R - Music / Radio",
+];
+
+export function FocusRoomHud() {
+  return (
+    <div className="focus-room-hud" aria-live="polite">
+      <p className="focus-room-title">Binds</p>
+      {HUD_BINDS.map((bind) => (
+        <p key={bind} className="focus-room-hint">
+          {bind}
+        </p>
+      ))}
+    </div>
+  );
+}

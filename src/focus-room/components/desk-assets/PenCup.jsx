@@ -25,25 +25,25 @@ function createSeededRandom(seed) {
   let state = seed >>> 0;
   return (min = 0, max = 1) => {
     state = (1664525 * state + 1013904223) >>> 0;
-    return min + ((state / 4294967296) * (max - min));
+    return min + (state / 4294967296) * (max - min);
   };
 }
 
-function Pencil({
-  barrelColor,
-  length,
-  position,
-  rotation,
-  eraserColor,
-}) {
+function Pencil({ barrelColor, length, position, rotation, eraserColor }) {
   const barrelLength = length - 0.03;
   const ferruleHeight = 0.016;
   const eraserHeight = 0.014;
 
   return (
     <group position={position} rotation={rotation}>
-      <mesh castShadow receiveShadow position={[0, barrelLength / 2 + 0.015, 0]}>
-        <cylinderGeometry args={[PENCIL_BODY_RADIUS, PENCIL_BODY_RADIUS, barrelLength, 6]} />
+      <mesh
+        castShadow
+        receiveShadow
+        position={[0, barrelLength / 2 + 0.015, 0]}
+      >
+        <cylinderGeometry
+          args={[PENCIL_BODY_RADIUS, PENCIL_BODY_RADIUS, barrelLength, 6]}
+        />
         <meshStandardMaterial color={barrelColor} roughness={0.55} />
       </mesh>
 
@@ -58,12 +58,30 @@ function Pencil({
       </mesh>
 
       <mesh castShadow position={[0, length - 0.02, 0]}>
-        <cylinderGeometry args={[PENCIL_BODY_RADIUS + 0.0013, PENCIL_BODY_RADIUS + 0.0013, ferruleHeight, 12]} />
-        <meshStandardMaterial color="#c8c0a8" roughness={0.25} metalness={0.82} />
+        <cylinderGeometry
+          args={[
+            PENCIL_BODY_RADIUS + 0.0013,
+            PENCIL_BODY_RADIUS + 0.0013,
+            ferruleHeight,
+            12,
+          ]}
+        />
+        <meshStandardMaterial
+          color="#c8c0a8"
+          roughness={0.25}
+          metalness={0.82}
+        />
       </mesh>
 
       <mesh castShadow position={[0, length - 0.007, 0]}>
-        <cylinderGeometry args={[PENCIL_BODY_RADIUS - 0.0007, PENCIL_BODY_RADIUS - 0.0007, eraserHeight, 12]} />
+        <cylinderGeometry
+          args={[
+            PENCIL_BODY_RADIUS - 0.0007,
+            PENCIL_BODY_RADIUS - 0.0007,
+            eraserHeight,
+            12,
+          ]}
+        />
         <meshStandardMaterial color={eraserColor} roughness={0.9} />
       </mesh>
     </group>
@@ -75,7 +93,7 @@ export function PenCup() {
     const random = createSeededRandom(90217);
     const eraserColors = ["#f4a0a0", "#f0c0b0", "#d4a8b8", "#f5b8b8"];
     const maxRadius = 0.034 * CUP_RADIUS_SCALE;
-    const maxLean = 0.19;
+    const maxLean = 0.8;
 
     return PENCIL_DATA.map((pencil, index) => {
       const angle = (pencil.angle * Math.PI) / 180 + random(-0.16, 0.16);
@@ -106,7 +124,16 @@ export function PenCup() {
   return (
     <group position={[0.62, DESK_TOP_Y + 0.08, -0.27]}>
       <mesh castShadow receiveShadow position={[0, CUP_HEIGHT / 2, 0]}>
-        <cylinderGeometry args={[CUP_TOP_RADIUS * CUP_RADIUS_SCALE, CUP_BOTTOM_RADIUS * CUP_RADIUS_SCALE, CUP_HEIGHT, 18, 1, true]} />
+        <cylinderGeometry
+          args={[
+            CUP_TOP_RADIUS * CUP_RADIUS_SCALE,
+            CUP_BOTTOM_RADIUS * CUP_RADIUS_SCALE,
+            CUP_HEIGHT,
+            18,
+            1,
+            true,
+          ]}
+        />
         <meshStandardMaterial color="#4a3728" roughness={0.82} />
       </mesh>
 
@@ -124,8 +151,13 @@ export function PenCup() {
         <meshStandardMaterial color="#000000" roughness={1} side={BackSide} />
       </mesh>
 
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, CUP_INNER_FLOOR_Y, 0]}>
-        <circleGeometry args={[(CUP_BOTTOM_RADIUS - 0.004) * CUP_RADIUS_SCALE, 18]} />
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, CUP_INNER_FLOOR_Y, 0]}
+      >
+        <circleGeometry
+          args={[(CUP_BOTTOM_RADIUS - 0.004) * CUP_RADIUS_SCALE, 18]}
+        />
         <meshStandardMaterial color="#000000" roughness={1} />
       </mesh>
 
@@ -134,8 +166,18 @@ export function PenCup() {
         <meshStandardMaterial color="#4a3728" roughness={0.82} />
       </mesh>
 
-      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, CUP_HEIGHT + 0.001, 0]}>
-        <torusGeometry args={[(CUP_TOP_RADIUS + 0.003) * CUP_RADIUS_SCALE, 0.005 * CUP_RADIUS_SCALE, 10, 20]} />
+      <mesh
+        rotation={[Math.PI / 2, 0, 0]}
+        position={[0, CUP_HEIGHT + 0.001, 0]}
+      >
+        <torusGeometry
+          args={[
+            (CUP_TOP_RADIUS + 0.003) * CUP_RADIUS_SCALE,
+            0.005 * CUP_RADIUS_SCALE,
+            10,
+            20,
+          ]}
+        />
         <meshStandardMaterial color="#5a4535" roughness={0.72} />
       </mesh>
 

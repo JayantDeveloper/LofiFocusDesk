@@ -1,3 +1,5 @@
+import { TODO_DIFFICULTY_OPTIONS } from "../constants";
+
 export function BoardItem({
   item,
   isDragging,
@@ -12,6 +14,9 @@ export function BoardItem({
     const { name, value, type, checked } = event.target;
     const fieldName = name || (type === "checkbox" ? "done" : "");
     const fieldValue = type === "checkbox" ? checked : value;
+    if (!fieldName) {
+      return;
+    }
     onChange(item.id, fieldName, fieldValue);
   }
 
@@ -33,25 +38,19 @@ export function BoardItem({
           placeholder="Title"
           onChange={handleChange}
         />
-        <textarea
-          className="focus-board-item-content-input"
-          name="content"
-          value={item.content}
-          placeholder="Task details..."
-          rows="1"
-          onChange={handleChange}
-        />
         <select
           className="focus-board-item-difficulty-input"
           name="difficulty"
           value={item.difficulty}
           onChange={handleChange}
         >
-          <option value="Easy">Easy</option>
-          <option value="Medium">Medium</option>
-          <option value="Hard">Hard</option>
+          {TODO_DIFFICULTY_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
         </select>
-        <button className="focus-board-delete-button" onClick={() => onDelete(item.id)}>
+        <button className="focus-board-delete-button" onClick={() => onDelete(item.id)} type="button">
           🗑️
         </button>
       </div>

@@ -13,11 +13,10 @@ export function DeskSetup({
   clockTime,
   isLampOn,
   isRadioOn,
-  textures,
 }) {
   return (
     <group position={[-2.05, 0, -2.1]}>
-      <DeskFrame textures={textures} />
+      <DeskFrame />
       <Notebook />
       <Plant />
       <DeskRadio isOn={isRadioOn} />
