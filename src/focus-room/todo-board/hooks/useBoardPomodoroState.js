@@ -2,11 +2,23 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const WORK_SECONDS = 25 * 60;
 const BREAK_SECONDS = 5 * 60;
+const FOCUS_SESSIONS_STORAGE_KEY = "focusdesk-pomodoro-focus-sessions";
+
+function getInitialFocusSessions() {
+  try {
+    const rawValue = window.localStorage.getItem(FOCUS_SESSIONS_STORAGE_KEY);
+    const parsed = Number.parseInt(rawValue ?? "0", 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  } catch {
+    return 0;
+  }
+}
 
 export function useBoardPomodoroState() {
   const [isRunning, setIsRunning] = useState(false);
   const [isBreak, setIsBreak] = useState(false);
   const [timeLeft, setTimeLeft] = useState(WORK_SECONDS);
+  const [completedFocusSessions, setCompletedFocusSessions] = useState(getInitialFocusSessions);
   const audioContextRef = useRef(null);
 
   const playCompletionRing = useCallback(() => {
@@ -50,6 +62,14 @@ export function useBoardPomodoroState() {
   }, []);
 
   useEffect(() => {
+    try {
+      window.localStorage.setItem(FOCUS_SESSIONS_STORAGE_KEY, String(completedFocusSessions));
+    } catch {
+      return undefined;
+    }
+  }, [completedFocusSessions]);
+
+  useEffect(() => {
     if (!isRunning) {
       return undefined;
     }
@@ -58,6 +78,9 @@ export function useBoardPomodoroState() {
       setTimeLeft((prevTime) => {
         if (prevTime <= 1) {
           playCompletionRing();
+          if (!isBreak) {
+            setCompletedFocusSessions((previousCount) => previousCount + 1);
+          }
           const nextIsBreak = !isBreak;
           setIsBreak(nextIsBreak);
           setIsRunning(true);
@@ -89,11 +112,12 @@ export function useBoardPomodoroState() {
     () => ({
       isBreak,
       isRunning,
+      completedFocusSessions,
       resetTimer,
       switchMode,
       timeLeft,
       toggleRunning,
     }),
-    [isBreak, isRunning, resetTimer, switchMode, timeLeft, toggleRunning],
+    [completedFocusSessions, isBreak, isRunning, resetTimer, switchMode, timeLeft, toggleRunning],
   );
 }

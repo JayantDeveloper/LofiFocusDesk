@@ -30,15 +30,25 @@ const BRANCH_CONFIGS = [
 ];
 
 const LEAF_CONFIGS = [
-  { position: [0.36, 1.8, 0.18], scale: [0.7, 0.55, 0.62], color: "#2d6a2d" },
-  { position: [0.1, 1.98, 0.34], scale: [0.76, 0.58, 0.68], color: "#3a7d3a" },
-  { position: [-0.2, 1.92, 0.26], scale: [0.74, 0.55, 0.7], color: "#4a9040" },
-  { position: [-0.35, 1.72, 0.06], scale: [0.72, 0.52, 0.66], color: "#558833" },
-  { position: [0.02, 2.12, 0.0], scale: [0.84, 0.62, 0.75], color: "#2a5c25" },
-  { position: [0.24, 2.03, -0.2], scale: [0.68, 0.5, 0.62], color: "#3a7d3a" },
-  { position: [-0.08, 2.16, -0.24], scale: [0.72, 0.54, 0.64], color: "#4a9040" },
-  { position: [-0.3, 1.95, -0.12], scale: [0.66, 0.48, 0.6], color: "#2d6a2d" },
-  { position: [0.14, 2.22, 0.16], scale: [0.62, 0.46, 0.58], color: "#558833" },
+  { position: [0.36, 1.8, 0.18], scale: [0.72, 0.58, 0.64], color: "#2a5f2f" },
+  { position: [0.1, 1.98, 0.34], scale: [0.78, 0.6, 0.7], color: "#3c7a37" },
+  { position: [-0.2, 1.92, 0.26], scale: [0.76, 0.58, 0.72], color: "#4d8f3f" },
+  { position: [-0.35, 1.72, 0.06], scale: [0.74, 0.54, 0.68], color: "#5d9741" },
+  { position: [0.02, 2.12, 0.0], scale: [0.88, 0.66, 0.78], color: "#255726" },
+  { position: [0.24, 2.03, -0.2], scale: [0.7, 0.52, 0.64], color: "#3a7d3a" },
+  { position: [-0.08, 2.16, -0.24], scale: [0.74, 0.56, 0.66], color: "#4a9040" },
+  { position: [-0.3, 1.95, -0.12], scale: [0.7, 0.5, 0.64], color: "#2d6a2d" },
+  { position: [0.14, 2.22, 0.16], scale: [0.64, 0.48, 0.6], color: "#5e9a45" },
+  { position: [0.28, 1.9, 0.0], scale: [0.62, 0.5, 0.56], color: "#356f31" },
+  { position: [-0.16, 1.84, 0.04], scale: [0.66, 0.5, 0.6], color: "#477f38" },
+  { position: [0.0, 2.04, -0.08], scale: [0.62, 0.48, 0.58], color: "#3f7133" },
+];
+
+const CANOPY_FILL_CONFIGS = [
+  { position: [0.05, 1.9, 0.08], scale: [0.64, 0.5, 0.62], color: "#3a7436" },
+  { position: [-0.1, 2.0, 0.02], scale: [0.6, 0.48, 0.58], color: "#2f652e" },
+  { position: [0.16, 2.02, -0.06], scale: [0.56, 0.44, 0.52], color: "#4a8440" },
+  { position: [-0.02, 2.15, 0.12], scale: [0.54, 0.42, 0.5], color: "#5a9344" },
 ];
 
 const ROOT_CONFIGS = [
@@ -50,8 +60,8 @@ const ROOT_CONFIGS = [
 export function Plant() {
   return (
     <group name="desk-plant" position={[0.86, DESK_TOP_Y + 0.02, -0.28]}>
-      <mesh name="desk-plant-hitbox" position={[0, 0.17, 0]}>
-        <boxGeometry args={[0.36, 0.46, 0.36]} />
+      <mesh name="desk-plant-hitbox" position={[0, 0.185, 0]}>
+        <cylinderGeometry args={[0.115, 0.1, 0.34, 12]} />
         <meshBasicMaterial color="#000000" colorWrite={false} depthWrite={false} opacity={0} transparent />
       </mesh>
 
@@ -99,9 +109,28 @@ export function Plant() {
           ))}
 
           {LEAF_CONFIGS.map((leaf, index) => (
-            <mesh key={`leaf-${index}`} castShadow position={leaf.position} scale={leaf.scale}>
-              <sphereGeometry args={[1, 5, 4]} />
-              <meshStandardMaterial color={leaf.color} roughness={0.72} />
+            <mesh key={`leaf-${index}`} castShadow receiveShadow position={leaf.position} scale={leaf.scale}>
+              <sphereGeometry args={[1, 7, 6]} />
+              <meshStandardMaterial
+                color={leaf.color}
+                metalness={0.02}
+                opacity={1}
+                roughness={0.72}
+                transparent={false}
+              />
+            </mesh>
+          ))}
+
+          {CANOPY_FILL_CONFIGS.map((leaf, index) => (
+            <mesh key={`leaf-fill-${index}`} castShadow receiveShadow position={leaf.position} scale={leaf.scale}>
+              <sphereGeometry args={[1, 6, 5]} />
+              <meshStandardMaterial
+                color={leaf.color}
+                metalness={0.02}
+                opacity={1}
+                roughness={0.76}
+                transparent={false}
+              />
             </mesh>
           ))}
         </group>

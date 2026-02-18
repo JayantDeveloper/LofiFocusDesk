@@ -1,3 +1,4 @@
+import { Text } from "@react-three/drei";
 import { BoardCss3DObject } from "./Css3DLayer";
 
 const RIGHT_BOOKCASE_X = 0.9;
@@ -39,6 +40,18 @@ const CALENDAR_GRID_ROWS = 5;
 const CALENDAR_PHOTO_1_Z = CALENDAR_CENTER_Z - 0.42;
 const CALENDAR_PHOTO_2_Z = CALENDAR_CENTER_Z + 0.34;
 const CALENDAR_ASSEMBLY_Y_OFFSET = -0.08;
+const STATS_TILE_SCALE = 1.3;
+const STATS_TILE_PANEL_WIDTH = 0.26 * STATS_TILE_SCALE;
+const STATS_TILE_PANEL_HEIGHT = 0.17 * STATS_TILE_SCALE;
+const STATS_TILE_FRAME_WIDTH = 0.34 * STATS_TILE_SCALE;
+const STATS_TILE_FRAME_HEIGHT = 0.25 * STATS_TILE_SCALE;
+const STATS_TILE_FRAME_DEPTH = 0.04;
+const STATS_TILE_TEXT_OFFSET_X = 0.0015;
+
+function formatScore(score) {
+  const clamped = Math.max(0, Math.min(100, Number.isFinite(score) ? score : 0));
+  return Math.round(clamped);
+}
 
 const BOOKS = SHELF_LEVELS.flatMap((shelf, shelfIndex) =>
   BOOK_X_SLOTS.map((x, slotIndex) => {
@@ -106,7 +119,73 @@ function Shelf({ textures }) {
   );
 }
 
-function CalendarAndPhotos() {
+function StatsTile({ accentColor, label, name, position, score }) {
+  return (
+    <group position={position}>
+      <mesh castShadow receiveShadow>
+        <boxGeometry args={[STATS_TILE_FRAME_DEPTH, STATS_TILE_FRAME_HEIGHT, STATS_TILE_FRAME_WIDTH]} />
+        <meshStandardMaterial color="#53372d" roughness={0.7} />
+      </mesh>
+
+      <mesh
+        name={name}
+        position={[0.008, 0, 0]}
+      >
+        <boxGeometry
+          args={[
+            STATS_TILE_FRAME_DEPTH + 0.002,
+            STATS_TILE_FRAME_HEIGHT,
+            STATS_TILE_FRAME_WIDTH,
+          ]}
+        />
+        <meshBasicMaterial
+          color="#000000"
+          colorWrite={false}
+          depthWrite={false}
+          opacity={0}
+          transparent
+        />
+      </mesh>
+
+      <group position={[0.022, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
+        <mesh>
+          <planeGeometry args={[STATS_TILE_PANEL_WIDTH, STATS_TILE_PANEL_HEIGHT]} />
+          <meshStandardMaterial color={accentColor} roughness={0.76} />
+        </mesh>
+
+        <Text
+          anchorX="center"
+          anchorY="middle"
+          color="#12233f"
+          fontSize={0.03}
+          fontWeight={900}
+          maxWidth={STATS_TILE_PANEL_WIDTH * 0.9}
+          outlineColor="#f5f8ff"
+          outlineWidth={0.0016}
+          position={[STATS_TILE_TEXT_OFFSET_X, 0.055, 0.0025]}
+        >
+          {label}
+        </Text>
+
+        <Text
+          anchorX="center"
+          anchorY="middle"
+          color="#0a1b34"
+          fontSize={0.068}
+          fontWeight={900}
+          maxWidth={STATS_TILE_PANEL_WIDTH * 0.9}
+          outlineColor="#f7fbff"
+          outlineWidth={0.0024}
+          position={[STATS_TILE_TEXT_OFFSET_X, -0.026, 0.0026]}
+        >
+          {formatScore(score)}
+        </Text>
+      </group>
+    </group>
+  );
+}
+
+function CalendarAndPhotos({ focusScore, taskScore }) {
   const verticalLineOffsets = Array.from({ length: CALENDAR_GRID_COLUMNS - 1 }, (_, index) => {
     return (
       -CALENDAR_PAGE_WIDTH * 0.5 +
@@ -163,31 +242,21 @@ function CalendarAndPhotos() {
         <meshStandardMaterial color="#d8d7d4" roughness={0.96} />
       </mesh>
 
-      <mesh castShadow receiveShadow position={[LEFT_WALL_CALENDAR_X, 1.94, CALENDAR_PHOTO_1_Z]}>
-        <boxGeometry args={[0.04, 0.25, 0.34]} />
-        <meshStandardMaterial color="#53372d" roughness={0.7} />
-      </mesh>
+      <StatsTile
+        accentColor="#8fb3da"
+        label="FOCUS"
+        name="wall-stats-focus-hitbox"
+        position={[LEFT_WALL_CALENDAR_X, 1.94, CALENDAR_PHOTO_1_Z]}
+        score={focusScore}
+      />
 
-      <mesh
-        position={[LEFT_WALL_CALENDAR_X + 0.022, 1.94, CALENDAR_PHOTO_1_Z]}
-        rotation={[0, Math.PI / 2, 0]}
-      >
-        <planeGeometry args={[0.26, 0.17]} />
-        <meshStandardMaterial color="#9bb9c7" roughness={0.88} />
-      </mesh>
-
-      <mesh castShadow receiveShadow position={[LEFT_WALL_CALENDAR_X, 1.83, CALENDAR_PHOTO_2_Z]}>
-        <boxGeometry args={[0.04, 0.25, 0.34]} />
-        <meshStandardMaterial color="#53372d" roughness={0.7} />
-      </mesh>
-
-      <mesh
-        position={[LEFT_WALL_CALENDAR_X + 0.022, 1.83, CALENDAR_PHOTO_2_Z]}
-        rotation={[0, Math.PI / 2, 0]}
-      >
-        <planeGeometry args={[0.26, 0.17]} />
-        <meshStandardMaterial color="#b0c59a" roughness={0.88} />
-      </mesh>
+      <StatsTile
+        accentColor="#92bb8d"
+        label="TASK"
+        name="wall-stats-task-hitbox"
+        position={[LEFT_WALL_CALENDAR_X, 1.83, CALENDAR_PHOTO_2_Z]}
+        score={taskScore}
+      />
     </group>
   );
 }
@@ -246,7 +315,14 @@ function TodoBoardPlaceholder({ boardPomodoro, boardTodo, onOpenBoardPopup, text
   );
 }
 
-export function WallDecor({ boardPomodoro, boardTodo, onOpenBoardPopup, textures }) {
+export function WallDecor({
+  boardPomodoro,
+  boardTodo,
+  focusScore,
+  onOpenBoardPopup,
+  taskScore,
+  textures,
+}) {
   return (
     <group>
       <group position={[-2.23, -0.16, 0]}>
@@ -257,7 +333,10 @@ export function WallDecor({ boardPomodoro, boardTodo, onOpenBoardPopup, textures
           textures={textures}
         />
       </group>
-      <CalendarAndPhotos />
+      <CalendarAndPhotos
+        focusScore={focusScore}
+        taskScore={taskScore}
+      />
       <Shelf textures={textures} />
     </group>
   );

@@ -95,6 +95,102 @@
   height: 100%;
 }
 
+.focus-stats-card {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  z-index: 75;
+  width: min(360px, calc(100vw - 28px));
+  border-radius: 20px;
+  border: 1px solid rgba(130, 93, 61, 0.28);
+  background: #f7efe3;
+  box-shadow:
+    0 18px 32px rgba(0, 0, 0, 0.28),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.42);
+  padding: 14px 14px 12px;
+  transition: opacity 160ms ease, transform 200ms ease;
+}
+
+.focus-stats-card.is-open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.focus-stats-card.is-closed {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(12px);
+}
+
+.focus-stats-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.focus-stats-card-header h2 {
+  margin: 0;
+  color: #4f301a;
+  font: 700 0.96rem/1.2 "Manrope", "Avenir Next", sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.focus-stats-card-header button {
+  border: 1px solid rgba(103, 73, 46, 0.34);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75);
+  color: #5a3b24;
+  font: 700 0.74rem/1 "Manrope", "Avenir Next", sans-serif;
+  letter-spacing: 0.03em;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+
+.focus-stats-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.focus-stats-tile {
+  border-radius: 14px;
+  padding: 10px 11px 11px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.32);
+}
+
+.focus-stats-tile h3 {
+  margin: 0 0 4px;
+  color: rgba(15, 29, 51, 0.86);
+  font: 700 0.7rem/1.1 "Manrope", "Avenir Next", sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.focus-stats-tile p {
+  margin: 0;
+  color: #0f1c30;
+  font: 700 2rem/1 "Bebas Neue", "Manrope", sans-serif;
+  letter-spacing: 0.03em;
+}
+
+.focus-stats-tile span {
+  display: block;
+  margin-top: 4px;
+  color: rgba(21, 32, 48, 0.75);
+  font: 700 0.68rem/1.15 "Manrope", "Avenir Next", sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.focus-stats-tile.focus-score {
+  background: linear-gradient(145deg, #d6e8fc, #b8d4f4);
+}
+
+.focus-stats-tile.task-score {
+  background: linear-gradient(145deg, #d5ebcc, #bbdda8);
+}
+
 .focus-room-music-player {
   position: fixed;
   left: -9999px;
@@ -145,5 +241,16 @@
     top: 12px;
     right: 12px;
     padding: 7px 10px;
+  }
+
+  .focus-stats-card {
+    right: 12px;
+    bottom: 12px;
+    width: min(336px, calc(100vw - 24px));
+    padding: 12px;
+  }
+
+  .focus-stats-grid {
+    grid-template-columns: 1fr;
   }
 }

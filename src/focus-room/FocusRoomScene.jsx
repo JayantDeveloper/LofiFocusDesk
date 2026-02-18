@@ -44,6 +44,7 @@ function isEditableTarget(target) {
 }
 
 function RoomInteractionHotkeys({
+  onOpenStatsPopup,
   onOpenCalendarPopup,
   onToggleBoardPopup,
   onToggleCalendarPopup,
@@ -54,7 +55,13 @@ function RoomInteractionHotkeys({
   const raycaster = useMemo(() => new Raycaster(), []);
 
   useEffect(() => {
-    if (!onToggleBoardPopup && !onToggleCalendarPopup && !onToggleMusic && !onOpenCalendarPopup) {
+    if (
+      !onToggleBoardPopup &&
+      !onToggleCalendarPopup &&
+      !onToggleMusic &&
+      !onOpenCalendarPopup &&
+      !onOpenStatsPopup
+    ) {
       return undefined;
     }
 
@@ -86,6 +93,22 @@ function RoomInteractionHotkeys({
         }
       }
 
+      const statsFocusHitbox = scene.getObjectByName("wall-stats-focus-hitbox");
+      if (statsFocusHitbox && onOpenStatsPopup) {
+        if (raycaster.intersectObject(statsFocusHitbox, true).length > 0) {
+          onOpenStatsPopup();
+          return;
+        }
+      }
+
+      const statsTaskHitbox = scene.getObjectByName("wall-stats-task-hitbox");
+      if (statsTaskHitbox && onOpenStatsPopup) {
+        if (raycaster.intersectObject(statsTaskHitbox, true).length > 0) {
+          onOpenStatsPopup();
+          return;
+        }
+      }
+
       const calendarHitbox = scene.getObjectByName("wall-calendar-hitbox");
       if (calendarHitbox && onOpenCalendarPopup) {
         if (raycaster.intersectObject(calendarHitbox, true).length > 0) {
@@ -109,7 +132,18 @@ function RoomInteractionHotkeys({
       window.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [camera, gl.domElement, onOpenCalendarPopup, onToggleBoardPopup, onToggleCalendarPopup, onToggleMusic, pointer, raycaster, scene]);
+  }, [
+    camera,
+    gl.domElement,
+    onOpenCalendarPopup,
+    onOpenStatsPopup,
+    onToggleBoardPopup,
+    onToggleCalendarPopup,
+    onToggleMusic,
+    pointer,
+    raycaster,
+    scene,
+  ]);
 
   return null;
 }
@@ -117,13 +151,16 @@ function RoomInteractionHotkeys({
 export function FocusRoomScene({
   boardPomodoro,
   boardTodo,
+  focusScore,
   isCameraLocked,
   isMusicPlaying,
   onOpenCalendarPopup,
   onOpenBoardPopup,
+  onOpenStatsPopup,
   onToggleBoardPopup,
   onToggleCalendarPopup,
   onWorldClockDisplayChange,
+  taskScore,
   onToggleMusic,
 }) {
   const { scene } = useThree();
@@ -351,12 +388,15 @@ export function FocusRoomScene({
       <WallDecor
         boardPomodoro={boardPomodoro}
         boardTodo={boardTodo}
+        focusScore={focusScore}
         onOpenBoardPopup={onOpenBoardPopup}
+        taskScore={taskScore}
         textures={textures}
       />
       <SceneCss3DRenderer />
       <RoomInteractionHotkeys
         onOpenCalendarPopup={onOpenCalendarPopup}
+        onOpenStatsPopup={onOpenStatsPopup}
         onToggleBoardPopup={onToggleBoardPopup}
         onToggleCalendarPopup={onToggleCalendarPopup}
         onToggleMusic={onToggleMusic}

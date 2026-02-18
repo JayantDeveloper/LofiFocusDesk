@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Canvas } from "@react-three/fiber";
+import { FocusStatsCard } from "./components/FocusStatsCard";
 import GoogleCalendar from "./components/GoogleCalendar";
 import { FocusRoomHud } from "./components/FocusRoomHud";
 import { FocusRoomPopup } from "./components/FocusRoomPopup";
@@ -13,6 +14,7 @@ import "./App.css";
 
 const DAY_ICON_PATH = "/lofideskiconday.png";
 const NIGHT_ICON_PATH = "/lofideskiconnight.png";
+const POMODORO_WORK_SECONDS = 25 * 60;
 
 function getInitialClockDisplay() {
   const now = new Date();
@@ -28,26 +30,59 @@ function getInitialClockDisplay() {
 function App() {
   const [isBoardPopupOpen, setIsBoardPopupOpen] = useState(false);
   const [isCalendarPopupOpen, setIsCalendarPopupOpen] = useState(false);
+  const [isStatsCardOpen, setIsStatsCardOpen] = useState(false);
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
   const [worldClockDisplay, setWorldClockDisplay] = useState(() => getInitialClockDisplay());
   const isCameraLocked = isBoardPopupOpen || isCalendarPopupOpen;
   const boardPomodoro = useBoardPomodoroState();
   const boardTodo = useBoardTodoItems();
+  const todoItems = boardTodo.items;
+  const completedTasks = todoItems.reduce((count, item) => count + (item.done ? 1 : 0), 0);
+  const totalTasks = todoItems.length;
+  const taskScore = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const completedFocusSessions = boardPomodoro.completedFocusSessions ?? 0;
+  const focusProgress = boardPomodoro.isBreak
+    ? 1
+    : Math.max(
+        0,
+        Math.min(1, (POMODORO_WORK_SECONDS - boardPomodoro.timeLeft) / POMODORO_WORK_SECONDS),
+      );
+  const focusScore = Math.min(
+    100,
+    Math.round(completedFocusSessions * 18 + focusProgress * 12 + (boardPomodoro.isRunning ? 4 : 0)),
+  );
   const toggleMusic = useCallback(() => setIsMusicPlaying((prev) => !prev), []);
   const openBoardPopup = useCallback(() => {
+    setIsStatsCardOpen(false);
     setIsCalendarPopupOpen(false);
     setIsBoardPopupOpen(true);
   }, []);
   const openCalendarPopup = useCallback(() => {
+    setIsStatsCardOpen(false);
     setIsBoardPopupOpen(false);
     setIsCalendarPopupOpen(true);
   }, []);
-  const toggleBoardPopup = useCallback(() => setIsBoardPopupOpen((prev) => !prev), []);
+  const openStatsCard = useCallback(() => {
+    setIsBoardPopupOpen(false);
+    setIsCalendarPopupOpen(false);
+    setIsStatsCardOpen(true);
+  }, []);
+  const toggleBoardPopup = useCallback(() => {
+    setIsBoardPopupOpen((prev) => {
+      const next = !prev;
+      if (next) {
+        setIsCalendarPopupOpen(false);
+        setIsStatsCardOpen(false);
+      }
+      return next;
+    });
+  }, []);
   const toggleCalendarPopup = useCallback(() => {
     setIsCalendarPopupOpen((prev) => {
       const next = !prev;
       if (next) {
         setIsBoardPopupOpen(false);
+        setIsStatsCardOpen(false);
       }
       return next;
     });
@@ -92,8 +127,11 @@ function App() {
           isMusicPlaying={isMusicPlaying}
           onOpenCalendarPopup={openCalendarPopup}
           onOpenBoardPopup={openBoardPopup}
+          onOpenStatsPopup={openStatsCard}
           onToggleBoardPopup={toggleBoardPopup}
           onToggleCalendarPopup={toggleCalendarPopup}
+          focusScore={focusScore}
+          taskScore={taskScore}
           onWorldClockDisplayChange={setWorldClockDisplay}
           onToggleMusic={toggleMusic}
         />
@@ -110,6 +148,16 @@ function App() {
       >
         <GoogleCalendar />
       </FocusRoomPopup>
+
+      <FocusStatsCard
+        completedFocusSessions={completedFocusSessions}
+        completedTasks={completedTasks}
+        focusScore={focusScore}
+        isOpen={isStatsCardOpen}
+        onClose={() => setIsStatsCardOpen(false)}
+        taskScore={taskScore}
+        totalTasks={totalTasks}
+      />
 
       <RoomMusicPlayer isPlaying={isMusicPlaying} />
     </div>
