@@ -193,9 +193,20 @@
 }
 
 .focus-board-done-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
   border: 1.5px solid var(--done-green);
   background: color-mix(in srgb, var(--done-green) 15%, white);
   color: color-mix(in srgb, var(--done-green) 80%, black);
+}
+
+.focus-board-done-count {
+  font-size: 9px;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  line-height: 1.2;
 }
 
 .focus-board-done-button:hover {

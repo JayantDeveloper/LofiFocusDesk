@@ -123,6 +123,7 @@ export function FocusRoomScene({
   onOpenBoardPopup,
   onToggleBoardPopup,
   onToggleCalendarPopup,
+  onWorldClockDisplayChange,
   onToggleMusic,
 }) {
   const { scene } = useThree();
@@ -289,6 +290,12 @@ export function FocusRoomScene({
       Object.values(textures).forEach((texture) => texture.dispose());
     };
   }, [textures]);
+
+  useEffect(() => {
+    if (onWorldClockDisplayChange) {
+      onWorldClockDisplayChange(clockDisplay);
+    }
+  }, [clockDisplay, onWorldClockDisplayChange]);
 
   return (
     <>
