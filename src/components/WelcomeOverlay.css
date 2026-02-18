@@ -138,6 +138,23 @@
   margin: 0;
 }
 
+.wo-prefix {
+  font-family: "Playfair Display", serif;
+  font-size: clamp(22px, 3vw, 34px);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  line-height: 0.82;
+  color: rgba(199, 164, 103, 0.85);
+  margin: 0 0 -10px;
+  padding: 0;
+  opacity: 0;
+  transform: translateY(10px);
+  animation: wo-rise 0.9s ease forwards;
+  animation-delay: 1.3s;
+  text-shadow: 0 1px 18px rgba(170, 110, 36, 0.2);
+}
+
 .wo-title {
   font-family: "Playfair Display", serif;
   font-size: clamp(52px, 9vw, 108px);

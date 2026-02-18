@@ -52,6 +52,7 @@ export function WelcomeOverlay() {
 
       <div className="wo-content">
         <p className="wo-eyebrow">Focus &mdash; Flow &mdash; Achieve</p>
+        <p className="wo-prefix">Lofi</p>
         <h1 className="wo-title">
           Focus<em>Desk</em>
         </h1>
