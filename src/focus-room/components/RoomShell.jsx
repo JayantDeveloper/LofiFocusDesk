@@ -199,10 +199,12 @@ const OUTSIDE_CLUSTER_Z_SHIFT = -0.92;
 const BUILDING_HEIGHT_SCALE = 0.75;
 const MIN_BUILDING_WIDTH = 0.38;
 const MIN_BUILDING_DEPTH = 0.48;
-const FRONT_WINDOW_INSET = 0.018;
-const SIDE_WINDOW_INSET = 0.018;
+const FRONT_WINDOW_INSET = 0.0036;
+const SIDE_WINDOW_INSET = 0.0036;
 const SUN_RAY_LAYER_COUNT = 32;
 const SUN_RAY_RANDOM_SEED = 42891;
+const STAR_COUNT = 92;
+const STAR_RANDOM_SEED = 98231;
 const SUN_X = 0.46;
 const SUN_Z = 1.48;
 const SUN_Y = WINDOW_CENTER_Y + 1.02;
@@ -249,6 +251,40 @@ function getTwilightFactor(sunHeight) {
   return normalized * normalized * (3 - 2 * normalized);
 }
 
+function smoothStep(t) {
+  const clamped = Math.max(0, Math.min(1, t));
+  return clamped * clamped * (3 - 2 * clamped);
+}
+
+function getStarVisibility(worldHour) {
+  if (worldHour >= 19 && worldHour < 20) {
+    return smoothStep(worldHour - 19);
+  }
+  if (worldHour >= 20 || worldHour < 2) {
+    return 1;
+  }
+  if (worldHour >= 2 && worldHour < 3) {
+    return 1 - smoothStep(worldHour - 2);
+  }
+  return 0;
+}
+
+function createStars() {
+  const random = createSeededRandom(STAR_RANDOM_SEED);
+  return Array.from({ length: STAR_COUNT }, () => ({
+    baseOpacity: random(0.5, 0.95),
+    blinkSpeed: random(0.9, 2.6),
+    phase: random(0, Math.PI * 2),
+    position: [
+      random(0.03, 0.08),
+      random(2.02, 2.78),
+      random(-1.85, 1.85),
+    ],
+    pulseSpeed: random(0.22, 0.7),
+    size: random(0.014, 0.03),
+  }));
+}
+
 function CityBuilding({ building, frontWindowMaterial, sideWindowMaterial }) {
   const scaledHeight = building.height * BUILDING_HEIGHT_SCALE;
   const scaledWidth = Math.max(building.width, MIN_BUILDING_WIDTH);
@@ -280,7 +316,7 @@ function CityBuilding({ building, frontWindowMaterial, sideWindowMaterial }) {
                     -scaledWidth * 0.32 + column * zStepFront,
                   ]}
                 >
-                  <boxGeometry args={[0.02, 0.048, 0.036]} />
+                  <boxGeometry args={[0.004, 0.048, 0.036]} />
                 </mesh>
               ))}
 
@@ -295,7 +331,7 @@ function CityBuilding({ building, frontWindowMaterial, sideWindowMaterial }) {
                     scaledWidth * 0.5 + SIDE_WINDOW_INSET,
                   ]}
                 >
-                  <boxGeometry args={[0.032, 0.048, 0.02]} />
+                  <boxGeometry args={[0.032, 0.048, 0.004]} />
                 </mesh>
               ))}
             </group>
@@ -334,6 +370,7 @@ export function RoomShell({ textures, worldHourRef }) {
   const moonLightRef = useRef(null);
   const sunRayMeshRefs = useRef([]);
   const sunRayMaterialRefs = useRef([]);
+  const starMaterialRefs = useRef([]);
   const daySkyColor = useMemo(() => new Color("#bfe4ff"), []);
   const twilightSkyColor = useMemo(() => new Color("#f6a2b4"), []);
   const nightSkyColor = useMemo(() => new Color("#010204"), []);
@@ -343,6 +380,7 @@ export function RoomShell({ textures, worldHourRef }) {
   const sunRayTwilightColor = useMemo(() => new Color("#ff9e5a"), []);
   const sunRayColorScratch = useMemo(() => new Color(), []);
   const sunRayLayers = useMemo(() => createSunRayLayers(), []);
+  const stars = useMemo(() => createStars(), []);
   const frontWindowMaterial = useMemo(
     () =>
       new MeshBasicMaterial({
@@ -386,6 +424,7 @@ export function RoomShell({ textures, worldHourRef }) {
     const twilightFactor = getTwilightFactor(sunHeight);
     const isSunVisible = sunHeight >= 0;
     const isBuildingLightsOn = worldHour >= 18 || worldHour < 6;
+    const starVisibility = getStarVisibility(worldHour);
 
     const orbitX = SUN_X + Math.cos(solarAngle) * 0.82;
     const orbitY = WINDOW_CENTER_Y + 1.02 + Math.sin(solarAngle) * 0.98;
@@ -492,6 +531,22 @@ export function RoomShell({ textures, worldHourRef }) {
 
       material.opacity = layer.baseOpacity * sunRayStrength;
       material.color.copy(sunRayColorScratch);
+    });
+
+    stars.forEach((star, index) => {
+      const material = starMaterialRefs.current[index];
+      if (!material) {
+        return;
+      }
+
+      if (starVisibility <= 0.0001) {
+        material.opacity = 0;
+        return;
+      }
+
+      const pulse = 0.68 + 0.32 * Math.sin(elapsedSeconds * star.pulseSpeed + star.phase);
+      const blink = 0.82 + 0.18 * Math.sin(elapsedSeconds * star.blinkSpeed + star.phase * 1.73);
+      material.opacity = star.baseOpacity * pulse * blink * starVisibility;
     });
 
     if (isBuildingLightsOn) {
@@ -657,6 +712,25 @@ export function RoomShell({ textures, worldHourRef }) {
             decay={2}
             position={[SUN_X, SUN_Y, SUN_Z]}
           />
+
+          <group>
+            {stars.map((star, index) => (
+              <mesh key={`sky-star-${index}`} position={star.position} renderOrder={14}>
+                <sphereGeometry args={[star.size, 8, 8]} />
+                <meshBasicMaterial
+                  blending={AdditiveBlending}
+                  color="#f2f7ff"
+                  depthWrite={false}
+                  opacity={0}
+                  ref={(material) => {
+                    starMaterialRefs.current[index] = material;
+                  }}
+                  side={DoubleSide}
+                  transparent
+                />
+              </mesh>
+            ))}
+          </group>
 
           {CITY_BUILDINGS.map((building) => (
             <CityBuilding

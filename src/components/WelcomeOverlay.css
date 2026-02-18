@@ -127,7 +127,7 @@
 
 .wo-eyebrow {
   font-family: "Space Mono", monospace;
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 0.45em;
   text-transform: uppercase;
   color: rgba(200, 165, 100, 0.55);
@@ -160,7 +160,7 @@
 
 .wo-subtitle {
   font-family: "Space Mono", monospace;
-  font-size: 10px;
+  font-size: 16px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: rgba(190, 165, 120, 0.35);
