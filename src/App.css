@@ -111,54 +111,6 @@
   border: 0;
 }
 
-.welcome-overlay {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  z-index: 20;
-  width: min(840px, calc(100vw - 40px));
-  padding: 28px 34px;
-  border: 1px solid rgba(255, 220, 176, 0.75);
-  border-radius: 18px;
-  transform: translate(-50%, -50%);
-  background: linear-gradient(145deg, rgba(24, 20, 13, 0.9), rgba(58, 39, 17, 0.84));
-  box-shadow:
-    0 24px 45px rgba(0, 0, 0, 0.38),
-    inset 0 0 42px rgba(255, 194, 107, 0.12);
-  text-align: center;
-  pointer-events: none;
-  animation: welcome-fade 9s ease-out forwards;
-}
-
-.welcome-overlay-title {
-  margin: 0;
-  color: #fff2dc;
-  font-family: "Bebas Neue", "Trebuchet MS", sans-serif;
-  font-size: clamp(2rem, 4vw, 3.2rem);
-  letter-spacing: 0.045em;
-  line-height: 1.05;
-  text-shadow: 0 5px 12px rgba(0, 0, 0, 0.32);
-}
-
-.welcome-overlay-subtitle {
-  margin: 14px 0 0;
-  color: #ffddb0;
-  font-family: "Manrope", "Avenir Next", sans-serif;
-  font-size: clamp(0.88rem, 1.5vw, 1.16rem);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-
-@keyframes welcome-fade {
-  0%,
-  72% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-  }
-}
-
 .focus-room-hud {
   position: absolute;
   top: 18px;
@@ -189,15 +141,6 @@
 }
 
 @media (max-width: 720px) {
-  .welcome-overlay {
-    padding: 20px 18px;
-    border-radius: 14px;
-  }
-
-  .welcome-overlay-subtitle {
-    margin-top: 10px;
-  }
-
   .focus-room-hud {
     top: 12px;
     right: 12px;
