@@ -1,6 +1,7 @@
 const HUD_BINDS = [
   "T - Todo List / Plant",
   "C - Calendar / Wall Calendar",
+  "S - Stats Card / Score Tiles",
   "R - Music / Radio",
 ];
 

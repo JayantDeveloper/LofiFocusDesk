@@ -28,6 +28,7 @@ Live app: [https://lofifocusdesk.vercel.app/](https://lofifocusdesk.vercel.app/)
 Keyboard:
 - `T` Toggle To-Do popup (same interaction as clicking the plant)
 - `C` Toggle Calendar popup (same interaction as clicking the wall calendar)
+- `S` Toggle Stats card (score tiles also open it)
 - `R` Toggle Music (same interaction as clicking the radio)
 
 Mouse / Pointer:

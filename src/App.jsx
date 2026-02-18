@@ -67,6 +67,16 @@ function App() {
     setIsCalendarPopupOpen(false);
     setIsStatsCardOpen(true);
   }, []);
+  const toggleStatsCard = useCallback(() => {
+    setIsStatsCardOpen((prev) => {
+      const next = !prev;
+      if (next) {
+        setIsBoardPopupOpen(false);
+        setIsCalendarPopupOpen(false);
+      }
+      return next;
+    });
+  }, []);
   const toggleBoardPopup = useCallback(() => {
     setIsBoardPopupOpen((prev) => {
       const next = !prev;
@@ -130,6 +140,7 @@ function App() {
           onOpenStatsPopup={openStatsCard}
           onToggleBoardPopup={toggleBoardPopup}
           onToggleCalendarPopup={toggleCalendarPopup}
+          onToggleStatsPopup={toggleStatsCard}
           focusScore={focusScore}
           taskScore={taskScore}
           onWorldClockDisplayChange={setWorldClockDisplay}

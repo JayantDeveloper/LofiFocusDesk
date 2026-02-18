@@ -48,6 +48,7 @@ function RoomInteractionHotkeys({
   onOpenCalendarPopup,
   onToggleBoardPopup,
   onToggleCalendarPopup,
+  onToggleStatsPopup,
   onToggleMusic,
 }) {
   const { camera, gl, scene } = useThree();
@@ -58,6 +59,7 @@ function RoomInteractionHotkeys({
     if (
       !onToggleBoardPopup &&
       !onToggleCalendarPopup &&
+      !onToggleStatsPopup &&
       !onToggleMusic &&
       !onOpenCalendarPopup &&
       !onOpenStatsPopup
@@ -123,6 +125,7 @@ function RoomInteractionHotkeys({
       const key = event.key.toLowerCase();
       if (key === "r" && onToggleMusic) { event.preventDefault(); onToggleMusic(); return; }
       if (key === "t" && onToggleBoardPopup) { event.preventDefault(); onToggleBoardPopup(); return; }
+      if (key === "s" && onToggleStatsPopup) { event.preventDefault(); onToggleStatsPopup(); return; }
       if (key === "c" && onToggleCalendarPopup) { event.preventDefault(); onToggleCalendarPopup(); }
     };
 
@@ -139,6 +142,7 @@ function RoomInteractionHotkeys({
     onOpenStatsPopup,
     onToggleBoardPopup,
     onToggleCalendarPopup,
+    onToggleStatsPopup,
     onToggleMusic,
     pointer,
     raycaster,
@@ -159,6 +163,7 @@ export function FocusRoomScene({
   onOpenStatsPopup,
   onToggleBoardPopup,
   onToggleCalendarPopup,
+  onToggleStatsPopup,
   onWorldClockDisplayChange,
   taskScore,
   onToggleMusic,
@@ -399,6 +404,7 @@ export function FocusRoomScene({
         onOpenStatsPopup={onOpenStatsPopup}
         onToggleBoardPopup={onToggleBoardPopup}
         onToggleCalendarPopup={onToggleCalendarPopup}
+        onToggleStatsPopup={onToggleStatsPopup}
         onToggleMusic={onToggleMusic}
       />
       <SeatedCameraControls enabled={!isCameraLocked} />
