@@ -124,7 +124,7 @@ function App() {
   return (
     <div className="focus-room-app">
       <WelcomeOverlay />
-      <FocusRoomHud />
+      {!isBoardPopupOpen && !isCalendarPopupOpen ? <FocusRoomHud /> : null}
       <Canvas
         shadows
         dpr={[1, 1.5]}

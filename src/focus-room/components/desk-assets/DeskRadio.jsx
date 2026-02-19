@@ -4,7 +4,7 @@ export function DeskRadio({ isOn = false }) {
   return (
     <group name="desk-radio" position={[0.95, DESK_TOP_Y + 0.1, 0.36]} rotation={[-0.09, -0.24, -0.03]}>
       <mesh name="desk-radio-hitbox" position={[0, 0.01, 0]}>
-        <boxGeometry args={[0.46, 0.3, 0.28]} />
+        <boxGeometry args={[0.42, 0.27, 0.24]} />
         <meshBasicMaterial color="#000000" colorWrite={false} depthWrite={false} opacity={0} transparent />
       </mesh>
 
