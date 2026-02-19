@@ -37,9 +37,10 @@ function App() {
   const boardPomodoro = useBoardPomodoroState();
   const boardTodo = useBoardTodoItems();
   const todoItems = boardTodo.items;
-  const completedTasks = todoItems.reduce((count, item) => count + (item.done ? 1 : 0), 0);
-  const totalTasks = todoItems.length;
-  const taskScore = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const completedTasks = Math.max(0, boardTodo.doneDeletedTasks ?? 0);
+  const totalTasks = Math.max(completedTasks, boardTodo.totalCreatedTasks ?? todoItems.length);
+  const taskScore =
+    totalTasks > 0 ? Math.min(100, Math.round((completedTasks / totalTasks) * 100)) : 0;
   const completedFocusSessions = boardPomodoro.completedFocusSessions ?? 0;
   const focusProgress = boardPomodoro.isBreak
     ? 1
@@ -51,6 +52,10 @@ function App() {
     100,
     Math.round(completedFocusSessions * 18 + focusProgress * 12 + (boardPomodoro.isRunning ? 4 : 0)),
   );
+  const resetScores = useCallback(() => {
+    boardPomodoro.resetFocusScore?.();
+    boardTodo.resetTaskScore?.();
+  }, [boardPomodoro, boardTodo]);
   const toggleMusic = useCallback(() => setIsMusicPlaying((prev) => !prev), []);
   const openBoardPopup = useCallback(() => {
     setIsStatsCardOpen(false);
@@ -166,6 +171,7 @@ function App() {
         focusScore={focusScore}
         isOpen={isStatsCardOpen}
         onClose={() => setIsStatsCardOpen(false)}
+        onResetScores={resetScores}
         taskScore={taskScore}
         totalTasks={totalTasks}
       />

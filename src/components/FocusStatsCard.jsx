@@ -9,6 +9,7 @@ export function FocusStatsCard({
   focusScore,
   isOpen,
   onClose,
+  onResetScores,
   taskScore,
   totalTasks,
 }) {
@@ -24,9 +25,14 @@ export function FocusStatsCard({
     <section aria-hidden={!isOpen} className={cardClassName}>
       <div className="focus-stats-card-header">
         <h2>Session Stats</h2>
-        <button onClick={onClose} type="button">
-          Close
-        </button>
+        <div className="focus-stats-card-header-actions">
+          <button onClick={onResetScores} type="button">
+            Reset Scores
+          </button>
+          <button onClick={onClose} type="button">
+            Close
+          </button>
+        </div>
       </div>
 
       <div className="focus-stats-grid">
@@ -40,7 +46,7 @@ export function FocusStatsCard({
           <h3>Task Score</h3>
           <p>{formatScore(taskScore)}</p>
           <span>
-            {safeCompletedTasks}/{safeTotalTasks} tasks done
+            {safeCompletedTasks}/{safeTotalTasks} tasks cleared via Done
           </span>
         </article>
       </div>

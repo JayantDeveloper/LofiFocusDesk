@@ -109,6 +109,23 @@ export function useBoardPomodoroState() {
     setTimeLeft(isBreak ? BREAK_SECONDS : WORK_SECONDS);
   }, [isBreak]);
 
+  const resetFocusScore = useCallback(() => {
+    setIsRunning(false);
+    setIsBreak(false);
+    setTimeLeft(WORK_SECONDS);
+    setCompletedFocusSessions(0);
+
+    if (stopAlarmTimeoutRef.current) {
+      window.clearTimeout(stopAlarmTimeoutRef.current);
+      stopAlarmTimeoutRef.current = null;
+    }
+
+    if (completionAudioRef.current) {
+      completionAudioRef.current.pause();
+      completionAudioRef.current.currentTime = 0;
+    }
+  }, []);
+
   const switchMode = useCallback((nextIsBreak) => {
     setIsRunning(false);
     setIsBreak(nextIsBreak);
@@ -125,10 +142,20 @@ export function useBoardPomodoroState() {
       isRunning,
       completedFocusSessions,
       resetTimer,
+      resetFocusScore,
       switchMode,
       timeLeft,
       toggleRunning,
     }),
-    [completedFocusSessions, isBreak, isRunning, resetTimer, switchMode, timeLeft, toggleRunning],
+    [
+      completedFocusSessions,
+      isBreak,
+      isRunning,
+      resetTimer,
+      resetFocusScore,
+      switchMode,
+      timeLeft,
+      toggleRunning,
+    ],
   );
 }

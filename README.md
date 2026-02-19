@@ -76,7 +76,7 @@ Mouse / Pointer:
 
 ### 5) Focus & Task Scoring
 
-- `Task Score`: percent of completed tasks.
+- `Task Score`: percent of tasks cleared via the **Done With Task** button over total tasks created.
 - `Focus Score`: derived from completed focus sessions + current focus-cycle progress + active run state.
 - Scores are shown on wall tiles and in the stats card.
 

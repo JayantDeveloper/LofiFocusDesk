@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BOARD_STORAGE_KEY, TODO_DIFFICULTY_OPTIONS } from "../constants";
+import {
+  BOARD_STORAGE_KEY,
+  BOARD_TASK_PROGRESS_STORAGE_KEY,
+  TODO_DIFFICULTY_OPTIONS,
+} from "../constants";
 
 const EDITABLE_FIELDS = new Set(["title", "difficulty", "done"]);
 
@@ -30,6 +34,11 @@ function createItemId() {
   return `task-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function normalizeCount(value) {
+  const parsed = Number.parseInt(String(value ?? 0), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
 export function useBoardTodoItems() {
   const [draggedItemId, setDraggedItemId] = useState(null);
   const [items, setItems] = useState(() => {
@@ -49,10 +58,49 @@ export function useBoardTodoItems() {
       return [];
     }
   });
+  const [taskProgress, setTaskProgress] = useState(() => {
+    const fallbackTotalCreated = items.length;
+    const fallback = {
+      doneDeletedTasks: 0,
+      totalCreatedTasks: fallbackTotalCreated,
+    };
+
+    try {
+      const savedProgress = window.localStorage.getItem(BOARD_TASK_PROGRESS_STORAGE_KEY);
+      if (!savedProgress) {
+        return fallback;
+      }
+
+      const parsed = JSON.parse(savedProgress);
+      if (!parsed || typeof parsed !== "object") {
+        return fallback;
+      }
+
+      const totalCreatedTasks = Math.max(
+        fallbackTotalCreated,
+        normalizeCount(parsed.totalCreatedTasks),
+      );
+      const doneDeletedTasks = Math.min(
+        totalCreatedTasks,
+        normalizeCount(parsed.doneDeletedTasks),
+      );
+
+      return {
+        doneDeletedTasks,
+        totalCreatedTasks,
+      };
+    } catch {
+      return fallback;
+    }
+  });
 
   useEffect(() => {
     window.localStorage.setItem(BOARD_STORAGE_KEY, JSON.stringify(items));
   }, [items]);
+
+  useEffect(() => {
+    window.localStorage.setItem(BOARD_TASK_PROGRESS_STORAGE_KEY, JSON.stringify(taskProgress));
+  }, [taskProgress]);
 
   const deleteItem = useCallback((idToDelete) => {
     setItems((prevItems) => prevItems.filter((item) => item.id !== idToDelete));
@@ -81,6 +129,10 @@ export function useBoardTodoItems() {
   }, []);
 
   const addItem = useCallback(() => {
+    setTaskProgress((prevProgress) => ({
+      ...prevProgress,
+      totalCreatedTasks: prevProgress.totalCreatedTasks + 1,
+    }));
     setItems((prevItems) => [
       ...prevItems,
       {
@@ -93,8 +145,30 @@ export function useBoardTodoItems() {
   }, []);
 
   const removeDoneItems = useCallback(() => {
+    const doneItemsCount = items.reduce((count, item) => count + (item.done ? 1 : 0), 0);
+    if (doneItemsCount <= 0) {
+      return;
+    }
+
+    setTaskProgress((prevProgress) => {
+      const doneDeletedTasks = prevProgress.doneDeletedTasks + doneItemsCount;
+      const totalCreatedTasks = Math.max(prevProgress.totalCreatedTasks, doneDeletedTasks);
+      return {
+        ...prevProgress,
+        doneDeletedTasks,
+        totalCreatedTasks,
+      };
+    });
+
     setItems((prevItems) => prevItems.filter((item) => item.done !== true));
-  }, []);
+  }, [items]);
+
+  const resetTaskScore = useCallback(() => {
+    setTaskProgress({
+      doneDeletedTasks: 0,
+      totalCreatedTasks: items.length,
+    });
+  }, [items.length]);
 
   const handleDragStart = useCallback((id) => {
     setDraggedItemId(id);
@@ -137,7 +211,10 @@ export function useBoardTodoItems() {
       handleDragStart,
       handleDrop,
       items,
+      doneDeletedTasks: taskProgress.doneDeletedTasks,
       removeDoneItems,
+      resetTaskScore,
+      totalCreatedTasks: taskProgress.totalCreatedTasks,
       updateItem,
     }),
     [
@@ -149,7 +226,10 @@ export function useBoardTodoItems() {
       handleDragStart,
       handleDrop,
       items,
+      taskProgress.doneDeletedTasks,
       removeDoneItems,
+      resetTaskScore,
+      taskProgress.totalCreatedTasks,
       updateItem,
     ],
   );
