@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 const WORK_SECONDS = 25 * 60;
 const BREAK_SECONDS = 5 * 60;
 const FOCUS_SESSIONS_STORAGE_KEY = "focusdesk-pomodoro-focus-sessions";
+const COMPLETION_ALARM_SRC = "/freesound_community-alarm-clock-short-6402.mp3";
+const COMPLETION_ALARM_PREVIEW_MS = 3000;
 
 function getInitialFocusSessions() {
   try {
@@ -19,47 +21,56 @@ export function useBoardPomodoroState() {
   const [isBreak, setIsBreak] = useState(false);
   const [timeLeft, setTimeLeft] = useState(WORK_SECONDS);
   const [completedFocusSessions, setCompletedFocusSessions] = useState(getInitialFocusSessions);
-  const audioContextRef = useRef(null);
+  const completionAudioRef = useRef(null);
+  const stopAlarmTimeoutRef = useRef(null);
 
   const playCompletionRing = useCallback(() => {
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContextClass) return;
-
-    if (!audioContextRef.current) {
-      audioContextRef.current = new AudioContextClass();
+    if (!completionAudioRef.current) {
+      const audio = new Audio(COMPLETION_ALARM_SRC);
+      audio.preload = "auto";
+      completionAudioRef.current = audio;
     }
 
-    const context = audioContextRef.current;
-    if (context.state === "suspended") {
-      context.resume().catch(() => {});
+    const alarm = completionAudioRef.current;
+    if (!alarm) return;
+
+    if (stopAlarmTimeoutRef.current) {
+      window.clearTimeout(stopAlarmTimeoutRef.current);
+      stopAlarmTimeoutRef.current = null;
     }
 
-    const notes = [
-      { frequency: 659.25, offset: 0 },
-      { frequency: 783.99, offset: 0.2 },
-      { frequency: 659.25, offset: 0.42 },
-    ];
+    try {
+      alarm.pause();
+      alarm.currentTime = 0;
+    } catch {
+      return;
+    }
 
-    const baseTime = context.currentTime + 0.02;
-    notes.forEach(({ frequency, offset }) => {
-      const startTime = baseTime + offset;
-      const endTime = startTime + 0.42;
-      const oscillator = context.createOscillator();
-      const gain = context.createGain();
+    const playPromise = alarm.play();
+    if (playPromise && typeof playPromise.catch === "function") {
+      playPromise.catch(() => {});
+    }
 
-      oscillator.type = "sine";
-      oscillator.frequency.setValueAtTime(frequency, startTime);
-
-      gain.gain.setValueAtTime(0.0001, startTime);
-      gain.gain.exponentialRampToValueAtTime(0.018, startTime + 0.05);
-      gain.gain.exponentialRampToValueAtTime(0.0001, endTime);
-
-      oscillator.connect(gain);
-      gain.connect(context.destination);
-      oscillator.start(startTime);
-      oscillator.stop(endTime + 0.02);
-    });
+    stopAlarmTimeoutRef.current = window.setTimeout(() => {
+      alarm.pause();
+      alarm.currentTime = 0;
+      stopAlarmTimeoutRef.current = null;
+    }, COMPLETION_ALARM_PREVIEW_MS);
   }, []);
+
+  useEffect(
+    () => () => {
+      if (stopAlarmTimeoutRef.current) {
+        window.clearTimeout(stopAlarmTimeoutRef.current);
+      }
+
+      if (completionAudioRef.current) {
+        completionAudioRef.current.pause();
+        completionAudioRef.current.currentTime = 0;
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     try {
