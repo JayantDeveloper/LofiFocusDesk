@@ -1,0 +1,17 @@
+.settings-gear {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(15,23,42,0.8);
+  color: #e2e8f0;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+  cursor: pointer;
+  /* Keep below welcome overlay (z-index 9999) */
+  z-index: 8000;
+  font-size: 20px;
+}
+.settings-gear:hover { background: rgba(30,41,59,0.9); }
