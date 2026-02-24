@@ -20,10 +20,11 @@ function getInitialClockDisplay() {
   const now = new Date();
   const hour24 = now.getHours();
   const hour12 = hour24 % 12 || 12;
+  const minute = now.getMinutes();
   return {
     ampm: hour24 >= 12 ? "PM" : "AM",
     hour24,
-    time: `${String(hour12).padStart(2, "0")}:00`,
+    time: `${String(hour12).padStart(2, "0")}:${String(minute).padStart(2, "0")}`,
   };
 }
 

@@ -8,25 +8,20 @@ import { SeatedCameraControls } from "./components/SeatedCameraControls";
 import { WallDecor } from "./components/WallDecor";
 import { useFocusTextures } from "./useFocusTextures";
 
-const WORLD_DAY_CYCLE_SECONDS = 60 * 60;
-
 function getCurrentLocalHour() {
   const now = new Date();
   return now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
 }
 
-function getWorldHour(startHour, elapsedSeconds) {
-  const advancedHours = (elapsedSeconds / WORLD_DAY_CYCLE_SECONDS) * 24;
-  return (startHour + advancedHours) % 24;
-}
-
 function toClockDisplay(worldHour) {
   const hour24 = ((Math.floor(worldHour) % 24) + 24) % 24;
   const hour12 = hour24 % 12 || 12;
+  const minute = Math.floor((worldHour - Math.floor(worldHour)) * 60);
   return {
     ampm: hour24 >= 12 ? "PM" : "AM",
     hour24,
-    time: `${String(hour12).padStart(2, "0")}:00`,
+    minute,
+    time: `${String(hour12).padStart(2, "0")}:${String(minute).padStart(2, "0")}`,
   };
 }
 
@@ -172,9 +167,9 @@ export function FocusRoomScene({
   const textures = useFocusTextures();
   const initialWorldHour = useMemo(() => getCurrentLocalHour(), []);
   const initialLampOn = initialWorldHour >= 18 || initialWorldHour < 6;
-  const simulationStartHourRef = useRef(initialWorldHour);
   const worldHourRef = useRef(initialWorldHour);
   const lastDisplayedHourRef = useRef(Math.floor(initialWorldHour) % 24);
+  const lastDisplayedMinuteRef = useRef(Math.floor((initialWorldHour - Math.floor(initialWorldHour)) * 60));
   const lampOnRef = useRef(initialLampOn);
   const [clockDisplay, setClockDisplay] = useState(() => toClockDisplay(initialWorldHour));
   const [isLampOn, setIsLampOn] = useState(initialLampOn);
@@ -217,7 +212,7 @@ export function FocusRoomScene({
   const targetFogColorRef     = useRef(new Color());
 
   useFrame((state, delta) => {
-    const worldHour = getWorldHour(simulationStartHourRef.current, state.clock.getElapsedTime());
+    const worldHour = getCurrentLocalHour();
     worldHourRef.current = worldHour;
 
     const solarPhase = ((worldHour - 6) / 24) * Math.PI * 2;
@@ -315,8 +310,12 @@ export function FocusRoomScene({
     }
 
     const nextDisplay = toClockDisplay(worldHour);
-    if (nextDisplay.hour24 !== lastDisplayedHourRef.current) {
+    if (
+      nextDisplay.hour24 !== lastDisplayedHourRef.current ||
+      nextDisplay.minute !== lastDisplayedMinuteRef.current
+    ) {
       lastDisplayedHourRef.current = nextDisplay.hour24;
+      lastDisplayedMinuteRef.current = nextDisplay.minute;
       setClockDisplay(nextDisplay);
     }
 
