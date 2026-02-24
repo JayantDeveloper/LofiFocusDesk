@@ -42,8 +42,11 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  const updateProfile = async (display_name, calendar_embed) => {
-    const data = await apiRequest("/api/user", { method: "PUT", body: { display_name, calendar_embed } });
+  const updateProfile = async (display_name, calendar_embed, music_urls) => {
+    const data = await apiRequest("/api/user", {
+      method: "PUT",
+      body: { display_name, calendar_embed, music_urls },
+    });
     setUser(data.user);
     return data.user;
   };

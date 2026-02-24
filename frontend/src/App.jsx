@@ -14,6 +14,7 @@ import { AuthModal } from "./components/AuthModal";
 import { SettingsDrawer } from "./components/SettingsDrawer";
 import { SettingsButton } from "./components/SettingsButton";
 import { useAuth } from "./auth/AuthContext";
+import { normalizeMusicUrls } from "./utils/music";
 import "./App.css";
 
 const DAY_ICON_PATH = "/lofideskiconday.png";
@@ -37,16 +38,20 @@ function App() {
   const [isCalendarPopupOpen, setIsCalendarPopupOpen] = useState(false);
   const [isStatsCardOpen, setIsStatsCardOpen] = useState(false);
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
+  const [activeMusicSlot, setActiveMusicSlot] = useState(0);
   const musicPrevRef = useRef(false);
   const lastAuthEventRef = useRef(0);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [worldClockDisplay, setWorldClockDisplay] = useState(() => getInitialClockDisplay());
   const { user, loading: authLoading, authEventId } = useAuth();
+  const isAuthGateOpen = authLoading || !user;
   const calendarEmbed = user?.calendar_embed || undefined;
+  const musicUrls = normalizeMusicUrls(user?.music_urls);
+  const activeMusicUrl = musicUrls[activeMusicSlot] || musicUrls[0];
   const isCameraLocked = isBoardPopupOpen || isCalendarPopupOpen || !user || isSettingsOpen;
   // Keep interactions off when overlays are up, but allow scene/CSS3D to render even for guests
-  const sceneInteractable = !isSettingsOpen && !isBoardPopupOpen && !isCalendarPopupOpen && !isStatsCardOpen;
-  const hotkeysEnabled = !isSettingsOpen;
+  const sceneInteractable = !isAuthGateOpen && !isSettingsOpen && !isBoardPopupOpen && !isCalendarPopupOpen && !isStatsCardOpen;
+  const hotkeysEnabled = !isAuthGateOpen && !isSettingsOpen;
   const boardPomodoro = useBoardPomodoroState();
   const boardTodo = useBoardTodoItems();
   const todoItems = boardTodo.items;
@@ -70,6 +75,12 @@ function App() {
     boardTodo.resetTaskScore?.();
   }, [boardPomodoro, boardTodo]);
   const toggleMusic = useCallback(() => setIsMusicPlaying((prev) => !prev), []);
+  const selectMusicSlot = useCallback((slot) => {
+    const slotNumber = Number(slot);
+    if (!Number.isInteger(slotNumber)) return;
+    const nextSlot = Math.min(4, Math.max(0, slotNumber));
+    setActiveMusicSlot(nextSlot);
+  }, []);
   const handlePauseMusic = useCallback(() => {
     musicPrevRef.current = isMusicPlaying;
     setIsMusicPlaying(false);
@@ -138,9 +149,20 @@ function App() {
     setIsStatsCardOpen(false);
     setIsSettingsOpen(false);
     setIsMusicPlaying(false);
+    setActiveMusicSlot(0);
     musicPrevRef.current = false;
     boardPomodoro.resetFocusScore?.();
   }, [authEventId, boardPomodoro.resetFocusScore, user]);
+
+  useEffect(() => {
+    if (user) return;
+    setIsBoardPopupOpen(false);
+    setIsCalendarPopupOpen(false);
+    setIsStatsCardOpen(false);
+    setIsSettingsOpen(false);
+    setIsMusicPlaying(false);
+    musicPrevRef.current = false;
+  }, [user]);
 
   useEffect(() => {
     const isDay = worldClockDisplay.hour24 >= 6 && worldClockDisplay.hour24 < 18;
@@ -204,6 +226,7 @@ function App() {
           taskScore={taskScore}
           onWorldClockDisplayChange={setWorldClockDisplay}
           onToggleMusic={toggleMusic}
+          onSelectMusicSlot={selectMusicSlot}
         />
       </Canvas>
 
@@ -230,7 +253,9 @@ function App() {
         totalTasks={totalTasks}
       />
 
-      {user && isMusicPlaying && !isSettingsOpen ? <RoomMusicPlayer isPlaying={isMusicPlaying} /> : null}
+      {user && isMusicPlaying && !isSettingsOpen ? (
+        <RoomMusicPlayer isPlaying={isMusicPlaying} sourceUrl={activeMusicUrl} />
+      ) : null}
     </div>
   );
 }

@@ -1,4 +1,7 @@
-require("dotenv").config();
+const path = require("path");
+const dotenv = require("dotenv");
+dotenv.config({ path: path.join(__dirname, ".env") });
+dotenv.config({ path: path.join(__dirname, ".env.local"), override: true });
 const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
@@ -16,14 +19,52 @@ const COOKIE_SAME_SITE = (process.env.COOKIE_SAME_SITE || (IS_PROD ? "none" : "l
 const COOKIE_SECURE = process.env.COOKIE_SECURE
   ? String(process.env.COOKIE_SECURE).toLowerCase() === "true"
   : COOKIE_SAME_SITE === "none";
+const MAX_MUSIC_SLOTS = 5;
+const DEFAULT_MUSIC_URLS = Object.freeze([
+  "https://www.youtube.com/watch?v=6Wurxv2x9cA",
+  "",
+  "",
+  "",
+  "",
+]);
+const DEV_FRONTEND_ORIGINS = Object.freeze([
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://localhost:4173",
+  "http://127.0.0.1:4173",
+]);
 
 const app = express();
 
+function normalizeOrigin(value) {
+  if (typeof value !== "string") return "";
+  return value.trim().replace(/\/+$/, "");
+}
+
+const configuredFrontendOrigins = process.env.FRONTEND_ORIGIN
+  ? process.env.FRONTEND_ORIGIN
+      .split(",")
+      .map((origin) => normalizeOrigin(origin))
+      .filter(Boolean)
+  : [];
+const allowedFrontendOrigins = IS_PROD
+  ? configuredFrontendOrigins
+  : Array.from(new Set([...configuredFrontendOrigins, ...DEV_FRONTEND_ORIGINS]));
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_ORIGIN
-      ? process.env.FRONTEND_ORIGIN.split(",").map((o) => o.trim())
-      : true,
+    origin(origin, callback) {
+      if (!origin || allowedFrontendOrigins.length === 0) {
+        callback(null, true);
+        return;
+      }
+      const normalizedOrigin = normalizeOrigin(origin);
+      if (allowedFrontendOrigins.includes(normalizedOrigin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
   }),
 );
@@ -37,7 +78,43 @@ function userJson(row) {
     username: row.username,
     display_name: row.display_name || "",
     calendar_embed: row.calendar_embed || "",
+    music_urls: parseMusicUrls(row.music_urls),
   };
+}
+
+function normalizeMusicUrls(value) {
+  const source = Array.isArray(value) ? value : [];
+  const normalized = Array.from({ length: MAX_MUSIC_SLOTS }, (_, index) => {
+    if (typeof source[index] !== "string") return "";
+    return source[index].trim();
+  });
+  if (!normalized[0]) {
+    normalized[0] = DEFAULT_MUSIC_URLS[0];
+  }
+  return normalized;
+}
+
+function parseMusicUrls(rawValue) {
+  if (Array.isArray(rawValue)) {
+    return normalizeMusicUrls(rawValue);
+  }
+  if (typeof rawValue === "string" && rawValue.trim()) {
+    try {
+      const parsed = JSON.parse(rawValue);
+      if (Array.isArray(parsed)) {
+        return normalizeMusicUrls(parsed);
+      }
+    } catch {}
+  }
+  return normalizeMusicUrls(DEFAULT_MUSIC_URLS);
+}
+
+function serializeMusicUrls(value) {
+  return JSON.stringify(parseMusicUrls(value));
+}
+
+function normalizeUsername(value) {
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function signToken(userId, remember) {
@@ -159,14 +236,18 @@ function authRequired(req, res, next) {
 }
 
 // Queries (prepared)
-const stmtFindUserByUsername = db.prepare("SELECT * FROM users WHERE username = ?");
+const stmtFindUserByUsername = db.prepare(`
+  SELECT * FROM users
+  WHERE lower(username) = lower(?)
+  LIMIT 1
+`);
 const stmtFindUserById = db.prepare("SELECT * FROM users WHERE id = ?");
 const stmtInsertUser = db.prepare(`
-  INSERT INTO users (username, password_hash, display_name, calendar_embed)
-  VALUES (?, ?, ?, ?)
+  INSERT INTO users (username, password_hash, display_name, calendar_embed, music_urls)
+  VALUES (?, ?, ?, ?, ?)
 `);
 const stmtUpdateUser = db.prepare(`
-  UPDATE users SET display_name = ?, calendar_embed = ? WHERE id = ?
+  UPDATE users SET display_name = ?, calendar_embed = ?, music_urls = ? WHERE id = ?
 `);
 
 const stmtListTasks = db.prepare(`
@@ -197,16 +278,25 @@ app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
 
 app.post("/api/auth/register", async (req, res) => {
   const { username = "", password = "", remember = false } = req.body || {};
-  const trimmed = username.trim();
-  if (trimmed.length < 3) return res.status(400).json({ error: "Username must be at least 3 characters" });
+  const normalizedUsername = normalizeUsername(username);
+  if (normalizedUsername.length < 3) {
+    return res.status(400).json({ error: "Username must be at least 3 characters" });
+  }
   if (password.length < 8) return res.status(400).json({ error: "Password must be at least 8 characters" });
 
-  if (stmtFindUserByUsername.get(trimmed)) {
+  if (stmtFindUserByUsername.get(normalizedUsername)) {
     return res.status(400).json({ error: "Username already exists" });
   }
   const hash = await bcrypt.hash(password, 12);
-  const info = stmtInsertUser.run(trimmed, hash, trimmed, "");
+  const info = stmtInsertUser.run(
+    normalizedUsername,
+    hash,
+    normalizedUsername,
+    "",
+    serializeMusicUrls(DEFAULT_MUSIC_URLS),
+  );
   const user = stmtFindUserById.get(info.lastInsertRowid);
+  if (!user) return res.status(500).json({ error: "Failed to create account" });
   const token = signToken(user.id, remember);
   setAuthCookie(res, token, remember);
   res.json({ user: userJson(user) });
@@ -214,7 +304,8 @@ app.post("/api/auth/register", async (req, res) => {
 
 app.post("/api/auth/login", async (req, res) => {
   const { username = "", password = "", remember = false } = req.body || {};
-  const user = stmtFindUserByUsername.get((username || "").trim());
+  const normalizedUsername = normalizeUsername(username);
+  const user = stmtFindUserByUsername.get(normalizedUsername);
   if (!user) return res.status(401).json({ error: "Invalid credentials" });
   const ok = await bcrypt.compare(password, user.password_hash);
   if (!ok) return res.status(401).json({ error: "Invalid credentials" });
@@ -243,9 +334,12 @@ app.get("/api/user", authRequired, (req, res) => {
 app.put("/api/user", authRequired, (req, res) => {
   const user = stmtFindUserById.get(req.userId);
   if (!user) return res.status(404).json({ error: "Not found" });
-  const display = (req.body?.display_name || "").trim();
-  const calendar = req.body?.calendar_embed || "";
-  stmtUpdateUser.run(display, calendar, req.userId);
+  const body = req.body || {};
+  const display = (body.display_name || "").trim();
+  const calendar = body.calendar_embed || "";
+  const hasMusicUrls = Object.prototype.hasOwnProperty.call(body, "music_urls");
+  const musicUrls = hasMusicUrls ? parseMusicUrls(body.music_urls) : parseMusicUrls(user.music_urls);
+  stmtUpdateUser.run(display, calendar, serializeMusicUrls(musicUrls), req.userId);
   const updated = stmtFindUserById.get(req.userId);
   res.json({ user: userJson(updated) });
 });

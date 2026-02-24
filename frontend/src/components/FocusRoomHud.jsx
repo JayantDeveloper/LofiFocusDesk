@@ -3,6 +3,7 @@ const HUD_BINDS = [
   "C - Calendar / Wall Calendar",
   "S - Stats Card / Score Tiles",
   "R - Music / Radio",
+  "1-5 - Select Radio Song",
 ];
 
 export function FocusRoomHud() {

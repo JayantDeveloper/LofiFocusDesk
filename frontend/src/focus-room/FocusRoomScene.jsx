@@ -45,6 +45,7 @@ function RoomInteractionHotkeys({
   onToggleCalendarPopup,
   onToggleStatsPopup,
   onToggleMusic,
+  onSelectMusicSlot,
   keybindsEnabled = true,
   pointerEnabled = true,
 }) {
@@ -136,7 +137,13 @@ function RoomInteractionHotkeys({
 
   useEffect(() => {
     if (!keybindsEnabled) return undefined;
-    if (!onToggleBoardPopup && !onToggleCalendarPopup && !onToggleStatsPopup && !onToggleMusic) {
+    if (
+      !onToggleBoardPopup &&
+      !onToggleCalendarPopup &&
+      !onToggleStatsPopup &&
+      !onToggleMusic &&
+      !onSelectMusicSlot
+    ) {
       return undefined;
     }
 
@@ -144,6 +151,11 @@ function RoomInteractionHotkeys({
       if (event.defaultPrevented || event.repeat) return;
       if (isEditableTarget(event.target)) return;
       const key = event.key.toLowerCase();
+      if (key >= "1" && key <= "5" && onSelectMusicSlot) {
+        event.preventDefault();
+        onSelectMusicSlot(Number(key) - 1);
+        return;
+      }
       if (key === "r" && onToggleMusic) { event.preventDefault(); onToggleMusic(); return; }
       if (key === "t" && onToggleBoardPopup) { event.preventDefault(); onToggleBoardPopup(); return; }
       if (key === "s" && onToggleStatsPopup) { event.preventDefault(); onToggleStatsPopup(); return; }
@@ -160,6 +172,7 @@ function RoomInteractionHotkeys({
     onToggleCalendarPopup,
     onToggleStatsPopup,
     onToggleMusic,
+    onSelectMusicSlot,
   ]);
 
   return null;
@@ -182,6 +195,7 @@ export function FocusRoomScene({
   onWorldClockDisplayChange,
   taskScore,
   onToggleMusic,
+  onSelectMusicSlot,
 }) {
   const { scene } = useThree();
   const textures = useFocusTextures();
@@ -425,6 +439,7 @@ export function FocusRoomScene({
         onToggleCalendarPopup={onToggleCalendarPopup}
         onToggleStatsPopup={onToggleStatsPopup}
         onToggleMusic={onToggleMusic}
+        onSelectMusicSlot={onSelectMusicSlot}
         keybindsEnabled={hotkeysEnabled}
         pointerEnabled={isInteractable}
       />

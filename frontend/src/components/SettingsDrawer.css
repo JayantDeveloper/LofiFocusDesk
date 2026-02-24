@@ -19,6 +19,43 @@
   flex-direction: column;
   gap: 16px;
   box-shadow: -20px 0 50px rgba(0,0,0,0.35);
+  overflow-y: auto;
+}
+.settings-save-banner {
+  align-items: center;
+  background: rgba(16, 185, 129, 0.16);
+  border: 1px solid rgba(52, 211, 153, 0.55);
+  border-radius: 999px;
+  color: #dcfce7;
+  display: flex;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 8px;
+  opacity: 0;
+  padding: 8px 12px;
+  pointer-events: none;
+  transform: translateY(-8px) scale(0.98);
+  transition: opacity 220ms ease, transform 260ms ease;
+}
+.settings-save-banner.is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+.settings-save-banner.is-exiting {
+  opacity: 0;
+  transform: translateY(-5px) scale(0.99);
+}
+.settings-save-check {
+  align-items: center;
+  background: #34d399;
+  border-radius: 999px;
+  color: #052e16;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 900;
+  height: 18px;
+  justify-content: center;
+  width: 18px;
 }
 .settings-header { display: flex; justify-content: space-between; align-items: center; }
 .settings-header h3 { margin: 4px 0 0; }
@@ -38,6 +75,28 @@
   overflow-y: hidden;
   resize: none;
 }
+.music-url-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.music-url-title {
+  color: #bfdbfe;
+  font-size: 13px;
+  font-weight: 600;
+}
+.music-url-grid {
+  display: grid;
+  gap: 8px;
+}
+.music-url-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.music-url-slot input {
+  width: 100%;
+}
 .settings-actions { display: flex; gap: 10px; margin-top: 8px; }
 .save-btn {
   flex: 1;
@@ -49,6 +108,10 @@
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 10px 25px rgba(16,185,129,0.35);
+}
+.save-btn:disabled {
+  cursor: default;
+  opacity: 0.7;
 }
 .logout-btn {
   padding: 12px 16px;

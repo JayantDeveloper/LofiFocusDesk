@@ -9,7 +9,11 @@ export function AuthModal() {
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);
   const [error, setError] = useState(null);
-  const toggleMode = () => setMode((m) => (m === "login" ? "register" : "login"));
+  const toggleMode = () => {
+    setMode((m) => (m === "login" ? "register" : "login"));
+    setError(null);
+    setPassword("");
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -37,14 +41,25 @@ export function AuthModal() {
         <form onSubmit={handleSubmit} className="auth-form">
           <label>
             <span>Username</span>
-            <input value={username} onChange={(e) => setUsername(e.target.value)} required minLength={3} />
+            <input
+              value={username}
+              onChange={(e) => {
+                setUsername(e.target.value);
+                if (error) setError(null);
+              }}
+              required
+              minLength={3}
+            />
           </label>
           <label>
             <span>Password</span>
             <input
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (error) setError(null);
+              }}
               required
               minLength={mode === "register" ? 8 : undefined}
             />
@@ -58,7 +73,7 @@ export function AuthModal() {
           {error && <div className="auth-error">{error}</div>}
           <button type="submit" className="auth-submit">{mode === "login" ? "Log in" : "Register"}</button>
         </form>
-        <button className="auth-switch" onClick={toggleMode}>
+        <button type="button" className="auth-switch" onClick={toggleMode}>
           {mode === "login" ? "Need an account? Register" : "Have an account? Log in"}
         </button>
       </div>
