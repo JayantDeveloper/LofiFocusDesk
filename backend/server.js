@@ -9,6 +9,13 @@ const PORT = process.env.PORT || 5001;
 const JWT_SECRET = process.env.JWT_SECRET_KEY || "dev-secret-change-me";
 const TOKEN_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "30d";
 const REMEMBER_EXPIRES_IN = process.env.JWT_REMEMBER_EXPIRES_IN || "365d";
+const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || "focusdesk_token";
+const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || undefined;
+const IS_PROD = process.env.NODE_ENV === "production";
+const COOKIE_SAME_SITE = (process.env.COOKIE_SAME_SITE || (IS_PROD ? "none" : "lax")).toLowerCase();
+const COOKIE_SECURE = process.env.COOKIE_SECURE
+  ? String(process.env.COOKIE_SECURE).toLowerCase() === "true"
+  : COOKIE_SAME_SITE === "none";
 
 const app = express();
 
@@ -39,13 +46,95 @@ function signToken(userId, remember) {
   });
 }
 
-function authOptional(req, _res, next) {
+function durationToMs(value) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value * 1000;
+  }
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const secondsOnly = trimmed.match(/^(\d+)$/);
+  if (secondsOnly) {
+    return Number(secondsOnly[1]) * 1000;
+  }
+
+  const match = trimmed.match(/^(\d+)\s*(ms|s|m|h|d)$/i);
+  if (!match) {
+    return null;
+  }
+  const amount = Number(match[1]);
+  const unit = match[2].toLowerCase();
+  if (unit === "ms") return amount;
+  if (unit === "s") return amount * 1000;
+  if (unit === "m") return amount * 60 * 1000;
+  if (unit === "h") return amount * 60 * 60 * 1000;
+  if (unit === "d") return amount * 24 * 60 * 60 * 1000;
+  return null;
+}
+
+function parseCookies(req) {
+  const cookieHeader = req.headers.cookie || "";
+  if (!cookieHeader) return {};
+  const pairs = cookieHeader.split(";").map((part) => part.trim()).filter(Boolean);
+  const cookies = {};
+  for (const pair of pairs) {
+    const eqIndex = pair.indexOf("=");
+    if (eqIndex <= 0) continue;
+    const name = pair.slice(0, eqIndex).trim();
+    const rawValue = pair.slice(eqIndex + 1).trim();
+    try {
+      cookies[name] = decodeURIComponent(rawValue);
+    } catch {
+      cookies[name] = rawValue;
+    }
+  }
+  return cookies;
+}
+
+function getTokenFromRequest(req) {
   const header = req.headers.authorization || "";
-  if (!header.toLowerCase().startsWith("bearer ")) {
+  if (header.toLowerCase().startsWith("bearer ")) {
+    return header.slice(7);
+  }
+  const cookies = parseCookies(req);
+  return cookies[AUTH_COOKIE_NAME] || null;
+}
+
+function getCookieOptions(maxAge) {
+  const options = {
+    httpOnly: true,
+    secure: COOKIE_SECURE,
+    sameSite: COOKIE_SAME_SITE,
+    path: "/",
+  };
+  if (COOKIE_DOMAIN) {
+    options.domain = COOKIE_DOMAIN;
+  }
+  if (Number.isFinite(maxAge) && maxAge > 0) {
+    options.maxAge = maxAge;
+  }
+  return options;
+}
+
+function setAuthCookie(res, token, remember) {
+  const expiresIn = remember ? REMEMBER_EXPIRES_IN : TOKEN_EXPIRES_IN;
+  const maxAge = durationToMs(expiresIn);
+  res.cookie(AUTH_COOKIE_NAME, token, getCookieOptions(maxAge));
+}
+
+function clearAuthCookie(res) {
+  res.clearCookie(AUTH_COOKIE_NAME, getCookieOptions());
+}
+
+function authOptional(req, _res, next) {
+  const token = getTokenFromRequest(req);
+  if (!token) {
     req.userId = null;
     return next();
   }
-  const token = header.slice(7);
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.userId = decoded.sub;
@@ -56,11 +145,10 @@ function authOptional(req, _res, next) {
 }
 
 function authRequired(req, res, next) {
-  const header = req.headers.authorization || "";
-  if (!header.toLowerCase().startsWith("bearer ")) {
+  const token = getTokenFromRequest(req);
+  if (!token) {
     return res.status(401).json({ error: "Unauthorized" });
   }
-  const token = header.slice(7);
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.userId = decoded.sub;
@@ -120,7 +208,8 @@ app.post("/api/auth/register", async (req, res) => {
   const info = stmtInsertUser.run(trimmed, hash, trimmed, "");
   const user = stmtFindUserById.get(info.lastInsertRowid);
   const token = signToken(user.id, remember);
-  res.json({ token, user: userJson(user) });
+  setAuthCookie(res, token, remember);
+  res.json({ user: userJson(user) });
 });
 
 app.post("/api/auth/login", async (req, res) => {
@@ -130,10 +219,14 @@ app.post("/api/auth/login", async (req, res) => {
   const ok = await bcrypt.compare(password, user.password_hash);
   if (!ok) return res.status(401).json({ error: "Invalid credentials" });
   const token = signToken(user.id, remember);
-  res.json({ token, user: userJson(user) });
+  setAuthCookie(res, token, remember);
+  res.json({ user: userJson(user) });
 });
 
-app.post("/api/auth/logout", (_req, res) => res.json({ ok: true }));
+app.post("/api/auth/logout", (_req, res) => {
+  clearAuthCookie(res);
+  res.json({ ok: true });
+});
 
 app.get("/api/auth/me", authOptional, (req, res) => {
   if (!req.userId) return res.json({ user: null });

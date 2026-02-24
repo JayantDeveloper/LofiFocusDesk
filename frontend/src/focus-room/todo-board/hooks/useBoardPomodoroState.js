@@ -8,8 +8,8 @@ const COMPLETION_ALARM_SRC = "/freesound_community-alarm-clock-short-6402.mp3";
 const COMPLETION_ALARM_PREVIEW_MS = 3000;
 
 export function useBoardPomodoroState() {
-  const { user, token } = useAuth();
-  const authSessionKey = token && user ? `${user.id ?? user.username ?? "user"}:${token}` : "";
+  const { user } = useAuth();
+  const authSessionKey = user ? `${user.id ?? user.username ?? "user"}` : "";
   const [isRunning, setIsRunning] = useState(false);
   const [isBreak, setIsBreak] = useState(false);
   const [timeLeft, setTimeLeft] = useState(WORK_SECONDS);
@@ -27,9 +27,9 @@ export function useBoardPomodoroState() {
   useEffect(() => {
     if (!authSessionKey) return;
     async function load() {
-      if (!token || !user) return;
+      if (!user) return;
       try {
-        const data = await apiRequest("/api/pomodoro", { token });
+        const data = await apiRequest("/api/pomodoro");
         if (skipHydrationSessionRef.current === authSessionKey) return;
         const state = data.state || {};
         setIsRunning(state.isRunning ?? false);
@@ -41,7 +41,7 @@ export function useBoardPomodoroState() {
       }
     }
     load();
-  }, [authSessionKey, token, user]);
+  }, [authSessionKey, user]);
 
   useEffect(() => {
     return () => {
@@ -57,12 +57,12 @@ export function useBoardPomodoroState() {
 
   const persistState = useCallback(
     async (state) => {
-      if (!token || !user) return;
+      if (!user) return;
       try {
-        await apiRequest("/api/pomodoro", { method: "PUT", token, body: state });
+        await apiRequest("/api/pomodoro", { method: "PUT", body: state });
       } catch {}
     },
-    [token, user],
+    [user],
   );
 
   const playCompletionRing = useCallback(() => {

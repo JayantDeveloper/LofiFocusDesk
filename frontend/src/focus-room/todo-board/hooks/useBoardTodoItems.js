@@ -30,18 +30,17 @@ function createItemId() {
 }
 
 export function useBoardTodoItems() {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const [draggedItemId, setDraggedItemId] = useState(null);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Load tasks: from API if logged in, else from localStorage
   useEffect(() => {
     async function load() {
-      if (token && user) {
+      if (user) {
         setLoading(true);
         try {
-          const data = await apiRequest("/api/tasks", { token });
+          const data = await apiRequest("/api/tasks");
           setItems((data.tasks || []).map(normalizeItem).filter(Boolean));
         } catch {
           setItems([]);
@@ -49,40 +48,28 @@ export function useBoardTodoItems() {
           setLoading(false);
         }
       } else {
-        try {
-          const saved = window.localStorage.getItem("focusdesk-local-tasks");
-          if (!saved) return;
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) setItems(parsed.map(normalizeItem).filter(Boolean));
-        } catch {}
+        setLoading(false);
+        setItems([]);
       }
     }
     load();
-  }, [token, user]);
-
-  useEffect(() => {
-    if (!token) {
-      try {
-        window.localStorage.setItem("focusdesk-local-tasks", JSON.stringify(items));
-      } catch {}
-    }
-  }, [items, token]);
+  }, [user]);
 
   const deleteItem = useCallback(
     async (idToDelete) => {
-      if (token) {
-        try {
-          await apiRequest(`/api/tasks/${idToDelete}`, { method: "DELETE", token });
-        } catch {}
-      }
+      if (!user) return;
+      try {
+        await apiRequest(`/api/tasks/${idToDelete}`, { method: "DELETE" });
+      } catch {}
       setItems((prevItems) => prevItems.filter((item) => item.id !== idToDelete));
     },
-    [token],
+    [user],
   );
 
   const updateItem = useCallback(
     async (idToUpdate, fieldName, value) => {
       if (!EDITABLE_FIELDS.has(fieldName)) return;
+      if (!user) return;
       setItems((prevItems) =>
         prevItems.map((item) =>
           item.id === idToUpdate
@@ -98,49 +85,33 @@ export function useBoardTodoItems() {
             : item,
         ),
       );
-      if (token) {
-        const body = {};
-        body[fieldName] = value;
-        try {
-          await apiRequest(`/api/tasks/${idToUpdate}`, { method: "PATCH", token, body });
-        } catch {}
-      }
+      const body = {};
+      body[fieldName] = value;
+      try {
+        await apiRequest(`/api/tasks/${idToUpdate}`, { method: "PATCH", body });
+      } catch {}
     },
-    [token],
+    [user],
   );
 
   const addItem = useCallback(async () => {
-    if (token) {
-      const data = await apiRequest("/api/tasks", {
-        method: "POST",
-        token,
-        body: { title: "", difficulty: "Easy", done: false },
-      });
-      setItems((prev) => [...prev, normalizeItem(data.task)].filter(Boolean));
-    } else {
-      setItems((prevItems) => [
-        ...prevItems,
-        {
-          id: createItemId(),
-          title: "",
-          difficulty: "Easy",
-          done: false,
-          position: prevItems.length + 1,
-        },
-      ]);
-    }
-  }, [token]);
+    if (!user) return;
+    const data = await apiRequest("/api/tasks", {
+      method: "POST",
+      body: { title: "", difficulty: "Easy", done: false },
+    });
+    setItems((prev) => [...prev, normalizeItem(data.task)].filter(Boolean));
+  }, [user]);
 
   const removeDoneItems = useCallback(async () => {
+    if (!user) return;
     const doneIds = items.filter((i) => i.done).map((i) => i.id);
     if (doneIds.length === 0) return;
-    if (token) {
-      await Promise.all(
-        doneIds.map((id) => apiRequest(`/api/tasks/${id}`, { method: "DELETE", token }).catch(() => {})),
-      );
-    }
+    await Promise.all(
+      doneIds.map((id) => apiRequest(`/api/tasks/${id}`, { method: "DELETE" }).catch(() => {})),
+    );
     setItems((prev) => prev.filter((i) => !i.done));
-  }, [items, token]);
+  }, [items, user]);
 
   const handleDragStart = useCallback((id) => {
     setDraggedItemId(id);
@@ -153,6 +124,7 @@ export function useBoardTodoItems() {
   const handleDrop = useCallback(
     async (targetId) => {
       if (!draggedItemId || draggedItemId === targetId) return;
+      if (!user) return;
       setItems((prevItems) => {
         const fromIndex = prevItems.findIndex((item) => item.id === draggedItemId);
         const toIndex = prevItems.findIndex((item) => item.id === targetId);
@@ -162,17 +134,14 @@ export function useBoardTodoItems() {
         reordered.splice(toIndex, 0, movedItem);
         return reordered;
       });
-      if (token) {
-        try {
-          await apiRequest(`/api/tasks/${draggedItemId}`, {
-            method: "PATCH",
-            token,
-            body: { position: items.findIndex((i) => i.id === targetId) + 1 },
-          });
-        } catch {}
-      }
+      try {
+        await apiRequest(`/api/tasks/${draggedItemId}`, {
+          method: "PATCH",
+          body: { position: items.findIndex((i) => i.id === targetId) + 1 },
+        });
+      } catch {}
     },
-    [draggedItemId, items, token],
+    [draggedItemId, items, user],
   );
 
   const handleDragEnd = useCallback(() => {

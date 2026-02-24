@@ -38,10 +38,10 @@ function App() {
   const [isStatsCardOpen, setIsStatsCardOpen] = useState(false);
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
   const musicPrevRef = useRef(false);
-  const lastAuthSessionRef = useRef("");
+  const lastAuthEventRef = useRef(0);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [worldClockDisplay, setWorldClockDisplay] = useState(() => getInitialClockDisplay());
-  const { user, token, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, authEventId } = useAuth();
   const calendarEmbed = user?.calendar_embed || undefined;
   const isCameraLocked = isBoardPopupOpen || isCalendarPopupOpen || !user || isSettingsOpen;
   // Keep interactions off when overlays are up, but allow scene/CSS3D to render even for guests
@@ -124,17 +124,15 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const currentSession = user && token ? `${user.id ?? user.username ?? "user"}:${token}` : "";
-    if (!currentSession) {
-      lastAuthSessionRef.current = "";
+    if (!user) {
+      lastAuthEventRef.current = authEventId;
+      return;
+    }
+    if (lastAuthEventRef.current === authEventId) {
       return;
     }
 
-    if (lastAuthSessionRef.current === currentSession) {
-      return;
-    }
-
-    lastAuthSessionRef.current = currentSession;
+    lastAuthEventRef.current = authEventId;
     setIsBoardPopupOpen(false);
     setIsCalendarPopupOpen(false);
     setIsStatsCardOpen(false);
@@ -142,7 +140,7 @@ function App() {
     setIsMusicPlaying(false);
     musicPrevRef.current = false;
     boardPomodoro.resetFocusScore?.();
-  }, [boardPomodoro.resetFocusScore, token, user]);
+  }, [authEventId, boardPomodoro.resetFocusScore, user]);
 
   useEffect(() => {
     const isDay = worldClockDisplay.hour24 >= 6 && worldClockDisplay.hour24 < 18;

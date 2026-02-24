@@ -64,7 +64,7 @@ Mouse / Pointer:
 - Drag-and-drop task reordering.
 - “Done With Task” action removes checked items.
 - Selection counter appears when at least one task is selected.
-- Stored in localStorage (`focusdesk-board-todo-items`).
+- Stored per user in backend SQLite via the Express API.
 
 ### 4) Pomodoro Timer
 
@@ -72,7 +72,7 @@ Mouse / Pointer:
 - Break mode: 05:00
 - Start/Pause, Reset, and mode switching.
 - Soft completion ring sound on cycle completion.
-- Completed focus sessions tracked and persisted in localStorage (`focusdesk-pomodoro-focus-sessions`).
+- Completed focus sessions tracked and persisted per user in the backend.
 
 ### 5) Focus & Task Scoring
 
@@ -209,27 +209,21 @@ Files:
 
 ## Persistence
 
-Current localStorage keys:
-
-- `focusdesk-board-todo-items` (task list data)
-- `focusdesk-pomodoro-focus-sessions` (completed focus session count)
+- Auth uses HttpOnly cookies set by the Express API.
+- User data is persisted via the Express API in `backend/instance/focusdesk.db` (SQLite).
 
 ## Deployment
 
-This project is Vite-compatible and deploys cleanly to Vercel.
+Recommended split deployment:
 
-Typical flow:
-
-1. Push to GitHub.
-2. Import repository in Vercel.
-3. Framework preset: `Vite`.
-4. Build command: `npm run build`.
-5. Output directory: `dist`.
+1. Frontend (`frontend/`) on Vercel (`npm run build`, output `dist`).
+2. Backend (`backend/`) on Render as a Node service:
+`Build Command`: `npm install`
+`Start Command`: `npm start`
 
 ## Notes
 
-- App is currently single-page and client-side only.
-- No backend/database is required; user data is stored locally in browser storage.
+- Frontend and backend are both required for full auth/task/pomodoro persistence.
 - If large chunk warnings appear during build, consider code-splitting for heavier scene/UI modules.
 
 ## License
