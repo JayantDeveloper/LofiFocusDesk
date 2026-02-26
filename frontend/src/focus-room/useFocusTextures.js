@@ -169,11 +169,6 @@ function createSkylineTexture() {
   context.fillStyle = gradient;
   context.fillRect(0, 0, TEXTURE_SIZE, TEXTURE_SIZE);
 
-  context.fillStyle = "rgba(248, 230, 185, 0.18)";
-  context.beginPath();
-  context.arc(190, 70, 24, 0, Math.PI * 2);
-  context.fill();
-
   return finalizeTexture(canvas, 1, 1);
 }
 

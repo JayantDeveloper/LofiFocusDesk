@@ -11,8 +11,8 @@ import { StickyNoteStack } from "./desk-assets/StickyNoteStack";
 export function DeskSetup({
   clockAmpm,
   clockTime,
-  isLampOn,
   isRadioOn,
+  worldHourRef,
 }) {
   return (
     <group position={[-2.05, 0, -2.1]}>
@@ -21,7 +21,7 @@ export function DeskSetup({
       <Plant />
       <DeskRadio isOn={isRadioOn} />
       <PenCup />
-      <DeskLamp isOn={isLampOn} />
+      <DeskLamp worldHourRef={worldHourRef} />
       <AlarmClock ampm={clockAmpm} time={clockTime} />
       <StickyNoteStack position={[-0.62, DESK_TOP_Y + 0.04, -0.36]} rotation={[0, 0.24, 0]} />
 

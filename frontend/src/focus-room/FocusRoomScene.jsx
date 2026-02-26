@@ -8,13 +8,30 @@ import { SeatedCameraControls } from "./components/SeatedCameraControls";
 import { WallDecor } from "./components/WallDecor";
 import { useFocusTextures } from "./useFocusTextures";
 
+const DAY_CYCLE_MINUTES = Number(import.meta.env.VITE_DAY_CYCLE_MINUTES);
+const SIMULATED_DAY_CYCLE_SECONDS = Number.isFinite(DAY_CYCLE_MINUTES) && DAY_CYCLE_MINUTES > 0
+  ? DAY_CYCLE_MINUTES * 60
+  : 0;
+
 function getCurrentLocalHour() {
   const now = new Date();
   return now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
 }
 
+function normalizeHour(hour) {
+  return ((hour % 24) + 24) % 24;
+}
+
+function getWorldHour(elapsedSeconds, initialWorldHour) {
+  if (SIMULATED_DAY_CYCLE_SECONDS > 0) {
+    const simulatedHours = (elapsedSeconds / SIMULATED_DAY_CYCLE_SECONDS) * 24;
+    return normalizeHour(initialWorldHour + simulatedHours);
+  }
+  return getCurrentLocalHour();
+}
+
 function toClockDisplay(worldHour) {
-  const hour24 = ((Math.floor(worldHour) % 24) + 24) % 24;
+  const hour24 = normalizeHour(Math.floor(worldHour));
   const hour12 = hour24 % 12 || 12;
   const minute = Math.floor((worldHour - Math.floor(worldHour)) * 60);
   return {
@@ -25,10 +42,39 @@ function toClockDisplay(worldHour) {
   };
 }
 
+function clamp01(value) {
+  return Math.min(1, Math.max(0, value));
+}
+
+function smooth01(value) {
+  const t = clamp01(value);
+  return t * t * t * (t * (t * 6 - 15) + 10);
+}
+
 function getTwilightFactor(sunHeight) {
-  const horizonBand = 0.5;
-  const normalized = Math.max(0, 1 - Math.abs(sunHeight) / horizonBand);
-  return normalized * normalized * (3 - 2 * normalized);
+  const horizonBand = 0.9;
+  const normalized = 1 - Math.abs(sunHeight) / horizonBand;
+  return smooth01(normalized);
+}
+
+function getDayBlend(worldHour, startHour, endHour) {
+  const hour = ((worldHour % 24) + 24) % 24;
+  if (hour <= startHour || hour >= endHour) return 0;
+  const midpoint = (startHour + endHour) * 0.5;
+  if (hour <= midpoint) {
+    return smooth01((hour - startHour) / Math.max(0.001, midpoint - startHour));
+  }
+  return smooth01((endHour - hour) / Math.max(0.001, endHour - midpoint));
+}
+
+function getMoonPhaseFactor(now = new Date()) {
+  const synodicMonthDays = 29.530588;
+  const knownNewMoonUtc = Date.UTC(2000, 0, 6, 18, 14, 0);
+  const daysSinceKnownNewMoon = (now.getTime() - knownNewMoonUtc) / 86400000;
+  const cycleDay = ((daysSinceKnownNewMoon % synodicMonthDays) + synodicMonthDays) % synodicMonthDays;
+  const normalizedPhase = cycleDay / synodicMonthDays;
+  const illumination = 0.5 - 0.5 * Math.cos(normalizedPhase * Math.PI * 2);
+  return 0.35 + illumination * 0.65;
 }
 
 function isEditableTarget(target) {
@@ -200,13 +246,10 @@ export function FocusRoomScene({
   const { scene } = useThree();
   const textures = useFocusTextures();
   const initialWorldHour = useMemo(() => getCurrentLocalHour(), []);
-  const initialLampOn = initialWorldHour >= 18 || initialWorldHour < 6;
   const worldHourRef = useRef(initialWorldHour);
   const lastDisplayedHourRef = useRef(Math.floor(initialWorldHour) % 24);
   const lastDisplayedMinuteRef = useRef(Math.floor((initialWorldHour - Math.floor(initialWorldHour)) * 60));
-  const lampOnRef = useRef(initialLampOn);
   const [clockDisplay, setClockDisplay] = useState(() => toClockDisplay(initialWorldHour));
-  const [isLampOn, setIsLampOn] = useState(initialLampOn);
 
   const ambientLightRef = useRef(null);
   const hemisphereLightRef = useRef(null);
@@ -227,26 +270,38 @@ export function FocusRoomScene({
 
   const skyNightColor         = useMemo(() => new Color("#080d16"), []);
   const skyTwilightColor      = useMemo(() => new Color("#f5a2b7"), []);
+  const skySunriseColor       = useMemo(() => new Color("#f6ccb0"), []);
+  const skySunsetColor        = useMemo(() => new Color("#cf7fae"), []);
   const skyDayColor           = useMemo(() => new Color("#cce9ff"), []);
   const fogNightColor         = useMemo(() => new Color("#1a1c25"), []);
   const fogTwilightColor      = useMemo(() => new Color("#d39ea6"), []);
+  const fogSunriseColor       = useMemo(() => new Color("#e4bea9"), []);
+  const fogSunsetColor        = useMemo(() => new Color("#aa6f89"), []);
   const fogDayColor           = useMemo(() => new Color("#e4d8cb"), []);
 
   const sunNoonColor          = useMemo(() => new Color("#fff4d6"), []);
   const sunMorningColor       = useMemo(() => new Color("#ffc87a"), []);
   const sunLowColor           = useMemo(() => new Color("#ff8c42"), []);
   const sunTwilightColor      = useMemo(() => new Color("#ff5e30"), []);
+  const sunSunriseColor       = useMemo(() => new Color("#ffcfa0"), []);
+  const sunSunsetColor        = useMemo(() => new Color("#ff6e3e"), []);
   const skyFillNightColor     = useMemo(() => new Color("#7f9fcb"), []);
   const skyFillDayColor       = useMemo(() => new Color("#c6dcff"), []);
   const skyFillTwilightColor  = useMemo(() => new Color("#f0b8c8"), []);
+  const skyFillSunriseColor   = useMemo(() => new Color("#f5d2bf"), []);
+  const skyFillSunsetColor    = useMemo(() => new Color("#d8a0bf"), []);
 
   const scratchColor          = useMemo(() => new Color(), []);
   const skyFillScratchColor   = useMemo(() => new Color(), []);
+  const twilightSkyScratchColor = useMemo(() => new Color(), []);
+  const twilightFogScratchColor = useMemo(() => new Color(), []);
+  const twilightSunScratchColor = useMemo(() => new Color(), []);
+  const twilightSkyFillScratchColor = useMemo(() => new Color(), []);
   const targetSkyColorRef     = useRef(new Color());
   const targetFogColorRef     = useRef(new Color());
 
   useFrame((state, delta) => {
-    const worldHour = getCurrentLocalHour();
+    const worldHour = getWorldHour(state.clock.getElapsedTime(), initialWorldHour);
     worldHourRef.current = worldHour;
 
     const solarPhase = ((worldHour - 6) / 24) * Math.PI * 2;
@@ -254,20 +309,33 @@ export function FocusRoomScene({
     const dayFactor = Math.max(0, sunHeight);
     const nightFactor = Math.max(0, -sunHeight);
     const twilightFactor = getTwilightFactor(sunHeight);
+    const sunriseBlend = getDayBlend(worldHour, 5, 8);
+    const sunsetBlend = getDayBlend(worldHour, 17, 20);
+    const moonPhaseFactor = getMoonPhaseFactor();
     const isSunActive = sunHeight >= 0;
+
+    twilightSkyScratchColor
+      .copy(skyTwilightColor)
+      .lerp(skySunriseColor, sunriseBlend)
+      .lerp(skySunsetColor, sunsetBlend);
 
     if (scene.background instanceof Color) {
       targetSkyColorRef.current
         .copy(skyNightColor)
-        .lerp(skyTwilightColor, twilightFactor)
+        .lerp(twilightSkyScratchColor, twilightFactor)
         .lerp(skyDayColor, dayFactor);
       scene.background.lerp(targetSkyColorRef.current, Math.min(1, delta * 0.55));
     }
 
+    twilightFogScratchColor
+      .copy(fogTwilightColor)
+      .lerp(fogSunriseColor, sunriseBlend)
+      .lerp(fogSunsetColor, sunsetBlend);
+
     if (scene.fog && "color" in scene.fog) {
       targetFogColorRef.current
         .copy(fogNightColor)
-        .lerp(fogTwilightColor, twilightFactor)
+        .lerp(twilightFogScratchColor, twilightFactor)
         .lerp(fogDayColor, dayFactor);
       scene.fog.color.lerp(targetFogColorRef.current, Math.min(1, delta * 0.6));
     }
@@ -306,13 +374,18 @@ export function FocusRoomScene({
       const midBand  = Math.max(0, Math.min(1, (dayFactor - 0.18) / 0.25));
       const highBand = Math.max(0, Math.min(1, (dayFactor - 0.42) / 0.3));
 
-      scratchColor
+      twilightSunScratchColor
         .copy(sunTwilightColor)
+        .lerp(sunSunriseColor, sunriseBlend)
+        .lerp(sunSunsetColor, sunsetBlend);
+
+      scratchColor
+        .copy(twilightSunScratchColor)
         .lerp(sunLowColor,   lowBand)
         .lerp(sunMorningColor, midBand)
         .lerp(sunNoonColor,  highBand);
 
-      scratchColor.lerp(sunTwilightColor, twilightFactor * 0.55);
+      scratchColor.lerp(twilightSunScratchColor, twilightFactor * 0.55);
 
       sunlightRef.current.color.lerp(scratchColor, Math.min(1, delta * 1.5));
 
@@ -326,6 +399,11 @@ export function FocusRoomScene({
       );
     }
 
+    twilightSkyFillScratchColor
+      .copy(skyFillTwilightColor)
+      .lerp(skyFillSunriseColor, sunriseBlend)
+      .lerp(skyFillSunsetColor, sunsetBlend);
+
     if (skyFillRef.current) {
       skyFillRef.current.intensity =
         isSunActive
@@ -333,14 +411,26 @@ export function FocusRoomScene({
           : nightFactor * 0.07;
       skyFillScratchColor
         .copy(skyFillNightColor)
-        .lerp(skyFillTwilightColor, twilightFactor)
+        .lerp(twilightSkyFillScratchColor, twilightFactor)
         .lerp(skyFillDayColor, dayFactor);
       skyFillRef.current.color.lerp(skyFillScratchColor, Math.min(1, delta * 1.2));
     }
 
+    const moonAngle = solarPhase + Math.PI;
+    const moonCos = Math.cos(moonAngle);
+    const moonSin = Math.sin(moonAngle);
+    const moonArcFactor = Math.pow(Math.max(0, moonSin), 0.82);
+
     if (moonlightRef.current) {
       moonlightRef.current.intensity =
-        isSunActive ? 0 : nightFactor * 0.24 + twilightFactor * 0.06;
+        isSunActive
+          ? 0
+          : moonArcFactor * (0.08 + moonPhaseFactor * 0.26) + twilightFactor * 0.05;
+      moonlightRef.current.position.set(
+        -moonCos * 3.2 + Math.sin(state.clock.getElapsedTime() * 0.07) * 0.22,
+        Math.max(0.35, moonSin * 4.8 + 0.6),
+        2.2 + moonSin * 1.1
+      );
     }
 
     const nextDisplay = toClockDisplay(worldHour);
@@ -351,12 +441,6 @@ export function FocusRoomScene({
       lastDisplayedHourRef.current = nextDisplay.hour24;
       lastDisplayedMinuteRef.current = nextDisplay.minute;
       setClockDisplay(nextDisplay);
-    }
-
-    const lampOn = worldHour >= 18 || worldHour < 6;
-    if (lampOn !== lampOnRef.current) {
-      lampOnRef.current = lampOn;
-      setIsLampOn(lampOn);
     }
   });
 
@@ -420,8 +504,8 @@ export function FocusRoomScene({
       <DeskSetup
         clockAmpm={clockDisplay.ampm}
         clockTime={clockDisplay.time}
-        isLampOn={isLampOn}
         isRadioOn={isMusicPlaying}
+        worldHourRef={worldHourRef}
       />
       <WallDecor
         boardPomodoro={boardPomodoro}

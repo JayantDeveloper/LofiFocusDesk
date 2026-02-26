@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:cycle5": "VITE_DAY_CYCLE_MINUTES=5 vite",
+    "dev:skyfx": "VITE_SHOW_STARS=1 VITE_SHOW_CLOUDS=1 VITE_SHOW_SKY_BODIES=1 vite",
+    "dev:cycle5:skyfx": "VITE_DAY_CYCLE_MINUTES=5 VITE_SHOW_STARS=1 VITE_SHOW_CLOUDS=1 VITE_SHOW_SKY_BODIES=1 vite",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"

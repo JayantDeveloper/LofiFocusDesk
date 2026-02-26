@@ -1,8 +1,30 @@
-import { useMemo } from "react";
-import { BackSide, CatmullRomCurve3, Vector2, Vector3 } from "three";
+import { useMemo, useRef } from "react";
+import { useFrame } from "@react-three/fiber";
+import { BackSide, CatmullRomCurve3, Color, Vector2, Vector3 } from "three";
 import { DESK_TOP_Y } from "./constants";
 
-export function DeskLamp({ isOn = false }) {
+function clamp01(value) {
+  return Math.min(1, Math.max(0, value));
+}
+
+function smoothStep(edge0, edge1, value) {
+  const width = Math.max(0.0001, edge1 - edge0);
+  const t = clamp01((value - edge0) / width);
+  return t * t * (3 - 2 * t);
+}
+
+function normalizeHour(hour) {
+  return ((hour % 24) + 24) % 24;
+}
+
+function getLampTargetStrength(worldHour) {
+  const hour = normalizeHour(worldHour);
+  const sunsetFadeIn = smoothStep(17, 19.5, hour);
+  const sunriseFadeOut = 1 - smoothStep(5, 7.5, hour);
+  return Math.max(sunsetFadeIn, sunriseFadeOut);
+}
+
+export function DeskLamp({ isOn = false, worldHourRef }) {
   const neckCurve = useMemo(
     () =>
       new CatmullRomCurve3(
@@ -36,6 +58,33 @@ export function DeskLamp({ isOn = false }) {
   const headPoint = neckCurve.getPointAt(1);
   const shadeOffsetX = 0.48;
   const shadeOffsetY = 0.62;
+  const baseBulbColor = useMemo(() => new Color("#2a2a2a"), []);
+  const litBulbColor = useMemo(() => new Color("#ffd39a"), []);
+  const litBulbEmissive = useMemo(() => new Color("#ffbf7f"), []);
+  const initialLampStrength = useMemo(() => {
+    if (worldHourRef?.current != null) return getLampTargetStrength(worldHourRef.current);
+    return isOn ? 1 : 0;
+  }, [isOn, worldHourRef]);
+  const lampStrengthRef = useRef(initialLampStrength);
+  const bulbMaterialRef = useRef(null);
+  const lampPointLightRef = useRef(null);
+
+  useFrame((_, delta) => {
+    const targetStrength = worldHourRef?.current != null
+      ? getLampTargetStrength(worldHourRef.current)
+      : (isOn ? 1 : 0);
+    lampStrengthRef.current += (targetStrength - lampStrengthRef.current) * Math.min(1, delta * 2.1);
+    const lampStrength = lampStrengthRef.current;
+
+    if (bulbMaterialRef.current) {
+      bulbMaterialRef.current.color.copy(baseBulbColor).lerp(litBulbColor, lampStrength);
+      bulbMaterialRef.current.emissive.copy(litBulbEmissive).multiplyScalar(lampStrength);
+      bulbMaterialRef.current.emissiveIntensity = lampStrength * 0.95;
+    }
+    if (lampPointLightRef.current) {
+      lampPointLightRef.current.intensity = lampStrength * 1.15;
+    }
+  });
 
   return (
     <group
@@ -133,11 +182,12 @@ export function DeskLamp({ isOn = false }) {
         <mesh position={[0, 0.24, 0]}>
           <sphereGeometry args={[0.1, 16, 16]} />
           <meshStandardMaterial
-            color={isOn ? "#ffd39a" : "#2a2a2a"}
-            emissive={isOn ? "#ffbf7f" : "#000000"}
-            emissiveIntensity={isOn ? 0.95 : 0}
+            color={initialLampStrength > 0 ? "#ffd39a" : "#2a2a2a"}
+            emissive="#ffbf7f"
+            emissiveIntensity={initialLampStrength * 0.95}
             roughness={0.35}
             metalness={0}
+            ref={bulbMaterialRef}
           />
         </mesh>
       </group>
@@ -146,8 +196,9 @@ export function DeskLamp({ isOn = false }) {
         color="#ffcf9a"
         decay={2}
         distance={2.2}
-        intensity={isOn ? 1.15 : 0}
+        intensity={initialLampStrength * 1.15}
         position={[headPoint.x + shadeOffsetX - 0.03, headPoint.y + shadeOffsetY + 0.2, headPoint.z]}
+        ref={lampPointLightRef}
       />
 
       <mesh castShadow receiveShadow position={[-0.62, 0.06, 0]}>
