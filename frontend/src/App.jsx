@@ -1,12 +1,10 @@
-import { useCallback, useEffect, useState, useRef } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
 import { FocusStatsCard } from "./components/FocusStatsCard";
 import GoogleCalendar from "./components/GoogleCalendar";
 import { FocusRoomHud } from "./components/FocusRoomHud";
 import { FocusRoomPopup } from "./components/FocusRoomPopup";
 import { RoomMusicPlayer } from "./components/RoomMusicPlayer";
 import { FocusTodoBoardApp } from "./focus-room/todo-board/FocusTodoBoardApp";
-import { FocusRoomScene } from "./focus-room/FocusRoomScene";
 import { useBoardPomodoroState } from "./focus-room/todo-board/hooks/useBoardPomodoroState";
 import { useBoardTodoItems } from "./focus-room/todo-board/hooks/useBoardTodoItems";
 import { WelcomeOverlay } from "./components/WelcomeOverlay";
@@ -20,6 +18,7 @@ import "./App.css";
 const DAY_ICON_PATH = "/lofideskiconday.png";
 const NIGHT_ICON_PATH = "/lofideskiconnight.png";
 const POMODORO_WORK_SECONDS = 25 * 60;
+const FocusRoomExperience = lazy(() => import("./focus-room/FocusRoomExperience"));
 
 function getInitialClockDisplay() {
   const now = new Date();
@@ -43,13 +42,14 @@ function App() {
   const lastAuthEventRef = useRef(0);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [worldClockDisplay, setWorldClockDisplay] = useState(() => getInitialClockDisplay());
-  const { user, loading: authLoading, authEventId } = useAuth();
-  const isAuthGateOpen = authLoading || !user;
+  const { user, loading: authLoading, hasSessionHint, authEventId } = useAuth();
+  const showAuthModal = !user && (!authLoading || !hasSessionHint);
+  const isAuthGateOpen = !user;
   const calendarEmbed = user?.calendar_embed || undefined;
   const musicUrls = normalizeMusicUrls(user?.music_urls);
   const activeMusicUrl = musicUrls[activeMusicSlot] || musicUrls[0];
   const isCameraLocked = isBoardPopupOpen || isCalendarPopupOpen || !user || isSettingsOpen;
-  // Keep interactions off when overlays are up, but allow scene/CSS3D to render even for guests
+  // Keep interactions off while auth/settings/popups are active.
   const sceneInteractable = !isAuthGateOpen && !isSettingsOpen && !isBoardPopupOpen && !isCalendarPopupOpen && !isStatsCardOpen;
   const hotkeysEnabled = !isAuthGateOpen && !isSettingsOpen;
   const boardPomodoro = useBoardPomodoroState();
@@ -185,7 +185,7 @@ function App() {
   return (
     <div className="focus-room-app">
       <WelcomeOverlay />
-      {!authLoading && !user ? <AuthModal /> : null}
+      {showAuthModal ? <AuthModal /> : null}
       {user ? <SettingsButton onClick={() => setIsSettingsOpen(true)} /> : null}
       {user ? (
         <SettingsDrawer
@@ -199,59 +199,58 @@ function App() {
         />
       ) : null}
       {sceneInteractable ? <FocusRoomHud /> : null}
-      <Canvas
-        shadows
-        dpr={[1, 1.5]}
-        camera={{
-          position: [-2.02, 1.42, -0.79],
-          fov: 46,
-          near: 0.1,
-          far: 50,
-        }}
-      >
-        <FocusRoomScene
-          boardPomodoro={boardPomodoro}
-          boardTodo={boardTodo}
-          isCameraLocked={isCameraLocked}
-          hotkeysEnabled={hotkeysEnabled}
-          isInteractable={sceneInteractable}
-          isMusicPlaying={isMusicPlaying}
-          onOpenCalendarPopup={openCalendarPopup}
-          onOpenBoardPopup={openBoardPopup}
-          onOpenStatsPopup={openStatsCard}
-          onToggleBoardPopup={toggleBoardPopup}
-          onToggleCalendarPopup={toggleCalendarPopup}
-          onToggleStatsPopup={toggleStatsCard}
+      {user ? (
+        <Suspense fallback={null}>
+          <FocusRoomExperience
+            boardPomodoro={boardPomodoro}
+            boardTodo={boardTodo}
+            isCameraLocked={isCameraLocked}
+            hotkeysEnabled={hotkeysEnabled}
+            isInteractable={sceneInteractable}
+            isMusicPlaying={isMusicPlaying}
+            onOpenCalendarPopup={openCalendarPopup}
+            onOpenBoardPopup={openBoardPopup}
+            onOpenStatsPopup={openStatsCard}
+            onToggleBoardPopup={toggleBoardPopup}
+            onToggleCalendarPopup={toggleCalendarPopup}
+            onToggleStatsPopup={toggleStatsCard}
+            focusScore={focusScore}
+            taskScore={taskScore}
+            onWorldClockDisplayChange={setWorldClockDisplay}
+            onToggleMusic={toggleMusic}
+            onSelectMusicSlot={selectMusicSlot}
+          />
+        </Suspense>
+      ) : null}
+
+      {user ? (
+        <FocusRoomPopup isOpen={isBoardPopupOpen} onClose={() => setIsBoardPopupOpen(false)}>
+          <FocusTodoBoardApp boardPomodoro={boardPomodoro} boardTodo={boardTodo} />
+        </FocusRoomPopup>
+      ) : null}
+
+      {user ? (
+        <FocusRoomPopup
+          contentClassName="focus-calendar-popup-content"
+          isOpen={isCalendarPopupOpen}
+          onClose={() => setIsCalendarPopupOpen(false)}
+        >
+          <GoogleCalendar embedUrl={calendarEmbed} />
+        </FocusRoomPopup>
+      ) : null}
+
+      {user ? (
+        <FocusStatsCard
+          completedFocusSessions={completedFocusSessions}
+          completedTasks={completedTasks}
           focusScore={focusScore}
+          isOpen={isStatsCardOpen}
+          onClose={() => setIsStatsCardOpen(false)}
+          onResetScores={resetScores}
           taskScore={taskScore}
-          onWorldClockDisplayChange={setWorldClockDisplay}
-          onToggleMusic={toggleMusic}
-          onSelectMusicSlot={selectMusicSlot}
+          totalTasks={totalTasks}
         />
-      </Canvas>
-
-      <FocusRoomPopup isOpen={isBoardPopupOpen} onClose={() => setIsBoardPopupOpen(false)}>
-        <FocusTodoBoardApp boardPomodoro={boardPomodoro} boardTodo={boardTodo} />
-      </FocusRoomPopup>
-
-      <FocusRoomPopup
-        contentClassName="focus-calendar-popup-content"
-        isOpen={isCalendarPopupOpen}
-        onClose={() => setIsCalendarPopupOpen(false)}
-      >
-        <GoogleCalendar embedUrl={calendarEmbed} />
-      </FocusRoomPopup>
-
-      <FocusStatsCard
-        completedFocusSessions={completedFocusSessions}
-        completedTasks={completedTasks}
-        focusScore={focusScore}
-        isOpen={isStatsCardOpen}
-        onClose={() => setIsStatsCardOpen(false)}
-        onResetScores={resetScores}
-        taskScore={taskScore}
-        totalTasks={totalTasks}
-      />
+      ) : null}
 
       {user && isMusicPlaying && !isSettingsOpen ? (
         <RoomMusicPlayer isPlaying={isMusicPlaying} sourceUrl={activeMusicUrl} />

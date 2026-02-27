@@ -11,7 +11,7 @@
   background: #1a1610;
   overflow: hidden;
   cursor: default;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .wo-root::after {
