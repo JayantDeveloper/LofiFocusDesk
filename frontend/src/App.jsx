@@ -47,7 +47,7 @@ function App() {
   const isAuthGateOpen = !user;
   const calendarEmbed = user?.calendar_embed || undefined;
   const musicUrls = normalizeMusicUrls(user?.music_urls);
-  const activeMusicUrl = musicUrls[activeMusicSlot] || musicUrls[0];
+  const activeMusicUrl = activeMusicSlot === 0 ? musicUrls[0] : musicUrls[activeMusicSlot];
   const isCameraLocked = isBoardPopupOpen || isCalendarPopupOpen || !user || isSettingsOpen;
   // Keep interactions off while auth/settings/popups are active.
   const sceneInteractable = !isAuthGateOpen && !isSettingsOpen && !isBoardPopupOpen && !isCalendarPopupOpen && !isStatsCardOpen;

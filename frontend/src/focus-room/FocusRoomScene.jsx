@@ -84,6 +84,31 @@ function isEditableTarget(target) {
   return target.isContentEditable;
 }
 
+function getMusicSlotFromKeyboardEvent(event) {
+  const key = typeof event.key === "string" ? event.key : "";
+  const code = typeof event.code === "string" ? event.code : "";
+
+  if (key >= "1" && key <= "5") {
+    return Number(key) - 1;
+  }
+
+  if (code.startsWith("Digit")) {
+    const value = Number(code.slice(5));
+    if (Number.isInteger(value) && value >= 1 && value <= 5) {
+      return value - 1;
+    }
+  }
+
+  if (code.startsWith("Numpad")) {
+    const value = Number(code.slice(6));
+    if (Number.isInteger(value) && value >= 1 && value <= 5) {
+      return value - 1;
+    }
+  }
+
+  return null;
+}
+
 function RoomInteractionHotkeys({
   onOpenStatsPopup,
   onOpenCalendarPopup,
@@ -196,12 +221,13 @@ function RoomInteractionHotkeys({
     const handleKeyDown = (event) => {
       if (event.defaultPrevented || event.repeat) return;
       if (isEditableTarget(event.target)) return;
-      const key = event.key.toLowerCase();
-      if (key >= "1" && key <= "5" && onSelectMusicSlot) {
+      const slot = getMusicSlotFromKeyboardEvent(event);
+      if (slot !== null && onSelectMusicSlot) {
         event.preventDefault();
-        onSelectMusicSlot(Number(key) - 1);
+        onSelectMusicSlot(slot);
         return;
       }
+      const key = event.key.toLowerCase();
       if (key === "r" && onToggleMusic) { event.preventDefault(); onToggleMusic(); return; }
       if (key === "t" && onToggleBoardPopup) { event.preventDefault(); onToggleBoardPopup(); return; }
       if (key === "s" && onToggleStatsPopup) { event.preventDefault(); onToggleStatsPopup(); return; }

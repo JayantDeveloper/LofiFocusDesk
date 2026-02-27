@@ -11,6 +11,7 @@ export function RoomMusicPlayer({ isPlaying, sourceUrl }) {
   return (
     <div className="focus-room-music-player" aria-hidden="true">
       <iframe
+        key={embedUrl}
         src={embedUrl}
         title="Focus music"
         allow="autoplay; encrypted-media; picture-in-picture"
