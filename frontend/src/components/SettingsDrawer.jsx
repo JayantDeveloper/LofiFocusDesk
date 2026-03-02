@@ -3,14 +3,13 @@ import { useAuth } from "../auth/AuthContext";
 import { MAX_MUSIC_SLOTS, normalizeMusicUrls } from "../utils/music";
 import "./SettingsDrawer.css";
 
-export function SettingsDrawer({ isOpen, onClose, onPauseMusic, onResumeMusic }) {
+export function SettingsDrawer({ isOpen, onClose }) {
   const { user, updateProfile, logout } = useAuth();
   const [displayName, setDisplayName] = useState(user?.display_name || "");
   const [calendarEmbed, setCalendarEmbed] = useState(user?.calendar_embed || "");
   const [musicUrls, setMusicUrls] = useState(() => normalizeMusicUrls(user?.music_urls));
   const [saving, setSaving] = useState(false);
   const [saveBannerState, setSaveBannerState] = useState("hidden");
-  const wasOpenRef = useRef(false);
   const calendarEmbedRef = useRef(null);
   const saveBannerExitTimerRef = useRef(null);
   const saveBannerHideTimerRef = useRef(null);
@@ -20,13 +19,6 @@ export function SettingsDrawer({ isOpen, onClose, onPauseMusic, onResumeMusic })
     setCalendarEmbed(user?.calendar_embed || "");
     setMusicUrls(normalizeMusicUrls(user?.music_urls));
   }, [user]);
-
-  useEffect(() => {
-    const wasOpen = wasOpenRef.current;
-    if (isOpen && !wasOpen && onPauseMusic) onPauseMusic();
-    if (!isOpen && wasOpen && onResumeMusic) onResumeMusic();
-    wasOpenRef.current = isOpen;
-  }, [isOpen, onPauseMusic, onResumeMusic]);
 
   const clearSaveBannerTimers = useCallback(() => {
     if (saveBannerExitTimerRef.current) {

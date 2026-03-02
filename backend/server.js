@@ -299,7 +299,7 @@ app.post("/api/auth/register", async (req, res) => {
   if (!user) return res.status(500).json({ error: "Failed to create account" });
   const token = signToken(user.id, remember);
   setAuthCookie(res, token, remember);
-  res.json({ user: userJson(user) });
+  res.json({ user: userJson(user), token });
 });
 
 app.post("/api/auth/login", async (req, res) => {
@@ -311,7 +311,7 @@ app.post("/api/auth/login", async (req, res) => {
   if (!ok) return res.status(401).json({ error: "Invalid credentials" });
   const token = signToken(user.id, remember);
   setAuthCookie(res, token, remember);
-  res.json({ user: userJson(user) });
+  res.json({ user: userJson(user), token });
 });
 
 app.post("/api/auth/logout", (_req, res) => {

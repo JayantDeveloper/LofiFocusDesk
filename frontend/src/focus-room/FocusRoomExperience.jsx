@@ -23,7 +23,9 @@ export default function FocusRoomExperience({
   return (
     <Canvas
       shadows
-      dpr={[1, 1.5]}
+      dpr={[1, 1.35]}
+      gl={{ alpha: false, antialias: true, powerPreference: "high-performance" }}
+      performance={{ min: 0.65, debounce: 200 }}
       camera={{
         position: [-2.02, 1.42, -0.79],
         fov: 46,

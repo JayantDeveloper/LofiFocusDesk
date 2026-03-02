@@ -18,7 +18,8 @@ import "./App.css";
 const DAY_ICON_PATH = "/lofideskiconday.png";
 const NIGHT_ICON_PATH = "/lofideskiconnight.png";
 const POMODORO_WORK_SECONDS = 25 * 60;
-const FocusRoomExperience = lazy(() => import("./focus-room/FocusRoomExperience"));
+const loadFocusRoomExperience = () => import("./focus-room/FocusRoomExperience");
+const FocusRoomExperience = lazy(loadFocusRoomExperience);
 
 function getInitialClockDisplay() {
   const now = new Date();
@@ -38,7 +39,6 @@ function App() {
   const [isStatsCardOpen, setIsStatsCardOpen] = useState(false);
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
   const [activeMusicSlot, setActiveMusicSlot] = useState(0);
-  const musicPrevRef = useRef(false);
   const lastAuthEventRef = useRef(0);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [worldClockDisplay, setWorldClockDisplay] = useState(() => getInitialClockDisplay());
@@ -80,13 +80,6 @@ function App() {
     if (!Number.isInteger(slotNumber)) return;
     const nextSlot = Math.min(4, Math.max(0, slotNumber));
     setActiveMusicSlot(nextSlot);
-  }, []);
-  const handlePauseMusic = useCallback(() => {
-    musicPrevRef.current = isMusicPlaying;
-    setIsMusicPlaying(false);
-  }, [isMusicPlaying]);
-  const handleResumeMusic = useCallback(() => {
-    setIsMusicPlaying(musicPrevRef.current);
   }, []);
   const openBoardPopup = useCallback(() => {
     setIsStatsCardOpen(false);
@@ -150,7 +143,6 @@ function App() {
     setIsSettingsOpen(false);
     setIsMusicPlaying(false);
     setActiveMusicSlot(0);
-    musicPrevRef.current = false;
     boardPomodoro.resetFocusScore?.();
   }, [authEventId, boardPomodoro.resetFocusScore, user]);
 
@@ -161,8 +153,11 @@ function App() {
     setIsStatsCardOpen(false);
     setIsSettingsOpen(false);
     setIsMusicPlaying(false);
-    musicPrevRef.current = false;
   }, [user]);
+
+  useEffect(() => {
+    loadFocusRoomExperience();
+  }, []);
 
   useEffect(() => {
     const isDay = worldClockDisplay.hour24 >= 6 && worldClockDisplay.hour24 < 18;
@@ -192,36 +187,31 @@ function App() {
           isOpen={isSettingsOpen}
           onClose={() => {
             setIsSettingsOpen(false);
-            setIsMusicPlaying(musicPrevRef.current);
           }}
-          onPauseMusic={handlePauseMusic}
-          onResumeMusic={handleResumeMusic}
         />
       ) : null}
       {sceneInteractable ? <FocusRoomHud /> : null}
-      {user ? (
-        <Suspense fallback={null}>
-          <FocusRoomExperience
-            boardPomodoro={boardPomodoro}
-            boardTodo={boardTodo}
-            isCameraLocked={isCameraLocked}
-            hotkeysEnabled={hotkeysEnabled}
-            isInteractable={sceneInteractable}
-            isMusicPlaying={isMusicPlaying}
-            onOpenCalendarPopup={openCalendarPopup}
-            onOpenBoardPopup={openBoardPopup}
-            onOpenStatsPopup={openStatsCard}
-            onToggleBoardPopup={toggleBoardPopup}
-            onToggleCalendarPopup={toggleCalendarPopup}
-            onToggleStatsPopup={toggleStatsCard}
-            focusScore={focusScore}
-            taskScore={taskScore}
-            onWorldClockDisplayChange={setWorldClockDisplay}
-            onToggleMusic={toggleMusic}
-            onSelectMusicSlot={selectMusicSlot}
-          />
-        </Suspense>
-      ) : null}
+      <Suspense fallback={<div className="focus-room-scene-fallback" aria-hidden="true" />}>
+        <FocusRoomExperience
+          boardPomodoro={boardPomodoro}
+          boardTodo={boardTodo}
+          isCameraLocked={isCameraLocked}
+          hotkeysEnabled={hotkeysEnabled}
+          isInteractable={sceneInteractable}
+          isMusicPlaying={isMusicPlaying}
+          onOpenCalendarPopup={openCalendarPopup}
+          onOpenBoardPopup={openBoardPopup}
+          onOpenStatsPopup={openStatsCard}
+          onToggleBoardPopup={toggleBoardPopup}
+          onToggleCalendarPopup={toggleCalendarPopup}
+          onToggleStatsPopup={toggleStatsCard}
+          focusScore={focusScore}
+          taskScore={taskScore}
+          onWorldClockDisplayChange={setWorldClockDisplay}
+          onToggleMusic={toggleMusic}
+          onSelectMusicSlot={selectMusicSlot}
+        />
+      </Suspense>
 
       {user ? (
         <FocusRoomPopup isOpen={isBoardPopupOpen} onClose={() => setIsBoardPopupOpen(false)}>
@@ -252,7 +242,7 @@ function App() {
         />
       ) : null}
 
-      {user && isMusicPlaying && !isSettingsOpen ? (
+      {user && isMusicPlaying ? (
         <RoomMusicPlayer isPlaying={isMusicPlaying} sourceUrl={activeMusicUrl} />
       ) : null}
     </div>
