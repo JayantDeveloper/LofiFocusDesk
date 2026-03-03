@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAuth } from "../auth/AuthContext";
+import { useAuth } from "../store/AuthStore";
 import "./AuthModal.css";
 
 export function AuthModal() {
@@ -7,7 +7,6 @@ export function AuthModal() {
   const [mode, setMode] = useState("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(true);
   const [error, setError] = useState(null);
   const toggleMode = () => {
     setMode((m) => (m === "login" ? "register" : "login"));
@@ -20,9 +19,9 @@ export function AuthModal() {
     setError(null);
     try {
       if (mode === "login") {
-        await login(username, password, remember);
+        await login(username, password);
       } else {
-        await register(username, password, remember);
+        await register(username, password);
       }
     } catch (err) {
       setError(err.message || "Invalid credentials");
@@ -64,12 +63,6 @@ export function AuthModal() {
               minLength={mode === "register" ? 8 : undefined}
             />
           </label>
-          {mode === "login" && (
-            <label className="remember-row">
-              <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
-              <span>Remember me</span>
-            </label>
-          )}
           {error && <div className="auth-error">{error}</div>}
           <button type="submit" className="auth-submit">{mode === "login" ? "Log in" : "Register"}</button>
         </form>

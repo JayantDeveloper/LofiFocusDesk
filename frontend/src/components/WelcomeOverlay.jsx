@@ -5,33 +5,37 @@ const WELCOME_OVERLAY_DURATION_MS = 9000;
 const EXIT_ANIMATION_MS = 900;
 const PROGRESS_DURATION_MS = WELCOME_OVERLAY_DURATION_MS - 2500;
 
-export function WelcomeOverlay() {
+export function WelcomeOverlay({ canDismiss = false, onComplete }) {
   const [phase, setPhase] = useState("visible");
+  const [fullDurationReached, setFullDurationReached] = useState(false);
+  const isReadyToDismiss = canDismiss && fullDurationReached;
 
   useEffect(() => {
-    const beginExit = () => {
-      setPhase((currentPhase) => (currentPhase === "visible" ? "exiting" : currentPhase));
-    };
-
-    const forceDismiss = () => {
-      beginExit();
-      window.clearTimeout(exitId);
-      window.clearTimeout(goneId);
-      goneId = window.setTimeout(() => setPhase("gone"), EXIT_ANIMATION_MS);
-    };
-
-    const exitId = window.setTimeout(beginExit, WELCOME_OVERLAY_DURATION_MS - EXIT_ANIMATION_MS);
-    let goneId = window.setTimeout(() => setPhase("gone"), WELCOME_OVERLAY_DURATION_MS);
-    window.addEventListener("pointerdown", forceDismiss, { once: true });
-    window.addEventListener("keydown", forceDismiss, { once: true });
-
+    const durationId = window.setTimeout(() => {
+      setFullDurationReached(true);
+    }, WELCOME_OVERLAY_DURATION_MS);
     return () => {
-      window.clearTimeout(exitId);
-      window.clearTimeout(goneId);
-      window.removeEventListener("pointerdown", forceDismiss);
-      window.removeEventListener("keydown", forceDismiss);
+      window.clearTimeout(durationId);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isReadyToDismiss || phase !== "visible") return;
+    setPhase("exiting");
+  }, [isReadyToDismiss, phase]);
+
+  useEffect(() => {
+    if (phase !== "exiting") return undefined;
+    const goneId = window.setTimeout(() => setPhase("gone"), EXIT_ANIMATION_MS);
+    return () => {
+      window.clearTimeout(goneId);
+    };
+  }, [phase]);
+
+  useEffect(() => {
+    if (phase !== "gone" || typeof onComplete !== "function") return;
+    onComplete();
+  }, [onComplete, phase]);
 
   if (phase === "gone") return null;
 
@@ -56,7 +60,9 @@ export function WelcomeOverlay() {
         <h1 className="wo-title">
           Focus<em>Desk</em>
         </h1>
-        <p className="wo-subtitle">Click &amp; swipe to get started</p>
+        <p className="wo-subtitle">
+          {isReadyToDismiss ? "Opening..." : "Preparing your desk..."}
+        </p>
       </div>
 
       <div className="wo-progress-track">

@@ -3,23 +3,41 @@ import { FocusStatsCard } from "./components/FocusStatsCard";
 import GoogleCalendar from "./components/GoogleCalendar";
 import { FocusRoomHud } from "./components/FocusRoomHud";
 import { FocusRoomPopup } from "./components/FocusRoomPopup";
+import CurrentlyPlaying from "./components/CurrentlyPlaying";
 import { RoomMusicPlayer } from "./components/RoomMusicPlayer";
-import { FocusTodoBoardApp } from "./focus-room/todo-board/FocusTodoBoardApp";
-import { useBoardPomodoroState } from "./focus-room/todo-board/hooks/useBoardPomodoroState";
-import { useBoardTodoItems } from "./focus-room/todo-board/hooks/useBoardTodoItems";
+import { FocusTodoBoardApp } from "./scenes/focusRoom/todo-board/FocusTodoBoardApp";
+import { useBoardPomodoroState } from "./hooks/useBoardPomodoroState";
+import { useBoardTodoItems } from "./hooks/useBoardTodoItems";
 import { WelcomeOverlay } from "./components/WelcomeOverlay";
 import { AuthModal } from "./components/AuthModal";
 import { SettingsDrawer } from "./components/SettingsDrawer";
 import { SettingsButton } from "./components/SettingsButton";
-import { useAuth } from "./auth/AuthContext";
-import { normalizeMusicUrls } from "./utils/music";
+import dayIcon from "./assets/lofideskiconday.png";
+import nightIcon from "./assets/lofideskiconnight.png";
+import {
+  DAY_END_HOUR,
+  DAY_START_HOUR,
+  DEFAULT_SYNC_BREAK_SLOT,
+  DEFAULT_SYNC_FOCUS_SLOT,
+} from "./constants/appConstants";
+import { MAX_MUSIC_SLOTS } from "./constants/musicConstants";
+import { WORK_SECONDS } from "./constants/pomodoroConstants";
+import { useAuth } from "./store/AuthStore";
+import {
+  extractYouTubeVideoId,
+  fetchYouTubeVideoMetadata,
+  normalizeMusicUrls,
+} from "./utils/music";
 import "./App.css";
 
-const DAY_ICON_PATH = "/lofideskiconday.png";
-const NIGHT_ICON_PATH = "/lofideskiconnight.png";
-const POMODORO_WORK_SECONDS = 25 * 60;
-const loadFocusRoomExperience = () => import("./focus-room/FocusRoomExperience");
+const loadFocusRoomExperience = () => import("./scenes/focusRoom/FocusRoomExperience");
 const FocusRoomExperience = lazy(loadFocusRoomExperience);
+
+function clampMusicSlot(value, fallback = DEFAULT_SYNC_FOCUS_SLOT) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed)) return fallback;
+  return Math.max(0, Math.min(MAX_MUSIC_SLOTS - 1, parsed));
+}
 
 function getInitialClockDisplay() {
   const now = new Date();
@@ -34,29 +52,57 @@ function getInitialClockDisplay() {
 }
 
 function App() {
+  const [isWelcomeComplete, setIsWelcomeComplete] = useState(false);
   const [isBoardPopupOpen, setIsBoardPopupOpen] = useState(false);
   const [isCalendarPopupOpen, setIsCalendarPopupOpen] = useState(false);
   const [isStatsCardOpen, setIsStatsCardOpen] = useState(false);
-  const [isMusicPlaying, setIsMusicPlaying] = useState(false);
+  const [isSceneModuleLoaded, setIsSceneModuleLoaded] = useState(false);
+  const [isSceneCanvasReady, setIsSceneCanvasReady] = useState(false);
+  const [isRadioOn, setIsRadioOn] = useState(false);
+  const [isMusicPaused, setIsMusicPaused] = useState(false);
   const [activeMusicSlot, setActiveMusicSlot] = useState(0);
+  const [trackMetadataByVideoId, setTrackMetadataByVideoId] = useState({});
   const lastAuthEventRef = useRef(0);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [worldClockDisplay, setWorldClockDisplay] = useState(() => getInitialClockDisplay());
-  const { user, loading: authLoading, hasSessionHint, authEventId } = useAuth();
-  const showAuthModal = !user && (!authLoading || !hasSessionHint);
+  const { user, authEventId } = useAuth();
+  const showAuthModal = isWelcomeComplete && !user;
+  const shouldRenderScene = isWelcomeComplete && Boolean(user);
   const isAuthGateOpen = !user;
   const calendarEmbed = user?.calendar_embed || undefined;
   const musicUrls = normalizeMusicUrls(user?.music_urls);
-  const activeMusicUrl = activeMusicSlot === 0 ? musicUrls[0] : musicUrls[activeMusicSlot];
+  const radioSyncEnabled = user?.radio_sync_enabled === true;
+  const focusSyncSlot = clampMusicSlot(user?.radio_focus_slot, DEFAULT_SYNC_FOCUS_SLOT);
+  const breakSyncSlot = clampMusicSlot(user?.radio_break_slot, DEFAULT_SYNC_BREAK_SLOT);
+  const activeMusicUrl = musicUrls[activeMusicSlot] || "";
+  const activeMusicVideoId = extractYouTubeVideoId(activeMusicUrl);
+  const activeTrackMetadata = activeMusicVideoId ? trackMetadataByVideoId[activeMusicVideoId] : null;
+  const isMusicPlaying = isRadioOn && !isMusicPaused;
+  const currentTrackTitle = activeMusicVideoId
+    ? (activeTrackMetadata?.title || "Loading title...")
+    : `No track in slot ${activeMusicSlot + 1}`;
+  const currentTrackArtist = activeMusicVideoId
+    ? (activeTrackMetadata?.channelName || "Loading channel...")
+    : "Add a valid YouTube URL in Settings";
+  const isSceneReady = shouldRenderScene && isSceneModuleLoaded && isSceneCanvasReady;
   const isCameraLocked = isBoardPopupOpen || isCalendarPopupOpen || !user || isSettingsOpen;
+  const isFullscreenUiOpen = isBoardPopupOpen || isCalendarPopupOpen;
+  const showCurrentlyPlaying = user && isRadioOn && !isFullscreenUiOpen;
+  const shouldRenderMusicPlayer = user && isRadioOn;
   // Keep interactions off while auth/settings/popups are active.
-  const sceneInteractable = !isAuthGateOpen && !isSettingsOpen && !isBoardPopupOpen && !isCalendarPopupOpen && !isStatsCardOpen;
-  const hotkeysEnabled = !isAuthGateOpen && !isSettingsOpen;
+  const sceneInteractable =
+    isSceneReady &&
+    !isAuthGateOpen &&
+    !isSettingsOpen &&
+    !isBoardPopupOpen &&
+    !isCalendarPopupOpen &&
+    !isStatsCardOpen;
+  const hotkeysEnabled = isSceneReady && !isAuthGateOpen && !isSettingsOpen;
   const boardPomodoro = useBoardPomodoroState();
   const boardTodo = useBoardTodoItems();
   const todoItems = boardTodo.items;
   const completedTasks = Math.max(0, boardTodo.doneDeletedTasks ?? 0);
-  const totalTasks = Math.max(completedTasks, boardTodo.totalCreatedTasks ?? todoItems.length);
+  const totalTasks = Math.max(0, Number.isFinite(boardTodo.totalCreatedTasks) ? boardTodo.totalCreatedTasks : todoItems.length);
   const taskScore =
     totalTasks > 0 ? Math.min(100, Math.round((completedTasks / totalTasks) * 100)) : 0;
   const completedFocusSessions = boardPomodoro.completedFocusSessions ?? 0;
@@ -64,7 +110,7 @@ function App() {
     ? 1
     : Math.max(
         0,
-        Math.min(1, (POMODORO_WORK_SECONDS - boardPomodoro.timeLeft) / POMODORO_WORK_SECONDS),
+        Math.min(1, (WORK_SECONDS - boardPomodoro.timeLeft) / WORK_SECONDS),
       );
   const focusScore = Math.min(
     100,
@@ -74,11 +120,23 @@ function App() {
     boardPomodoro.resetFocusScore?.();
     boardTodo.resetTaskScore?.();
   }, [boardPomodoro, boardTodo]);
-  const toggleMusic = useCallback(() => setIsMusicPlaying((prev) => !prev), []);
+  const toggleMusic = useCallback(() => {
+    setIsRadioOn((prev) => {
+      const next = !prev;
+      if (next) {
+        setIsMusicPaused(false);
+      }
+      return next;
+    });
+  }, []);
+  const togglePauseMusic = useCallback(() => {
+    if (!isRadioOn) return;
+    setIsMusicPaused((prev) => !prev);
+  }, [isRadioOn]);
   const selectMusicSlot = useCallback((slot) => {
     const slotNumber = Number(slot);
     if (!Number.isInteger(slotNumber)) return;
-    const nextSlot = Math.min(4, Math.max(0, slotNumber));
+    const nextSlot = Math.min(MAX_MUSIC_SLOTS - 1, Math.max(0, slotNumber));
     setActiveMusicSlot(nextSlot);
   }, []);
   const openBoardPopup = useCallback(() => {
@@ -126,6 +184,9 @@ function App() {
       return next;
     });
   }, []);
+  const handleSceneReady = useCallback(() => {
+    setIsSceneCanvasReady(true);
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -141,7 +202,8 @@ function App() {
     setIsCalendarPopupOpen(false);
     setIsStatsCardOpen(false);
     setIsSettingsOpen(false);
-    setIsMusicPlaying(false);
+    setIsRadioOn(false);
+    setIsMusicPaused(false);
     setActiveMusicSlot(0);
     boardPomodoro.resetFocusScore?.();
   }, [authEventId, boardPomodoro.resetFocusScore, user]);
@@ -152,16 +214,103 @@ function App() {
     setIsCalendarPopupOpen(false);
     setIsStatsCardOpen(false);
     setIsSettingsOpen(false);
-    setIsMusicPlaying(false);
+    setIsRadioOn(false);
+    setIsMusicPaused(false);
   }, [user]);
 
   useEffect(() => {
-    loadFocusRoomExperience();
+    let isCancelled = false;
+    loadFocusRoomExperience()
+      .then(() => {
+        if (isCancelled) return;
+        setIsSceneModuleLoaded(true);
+      })
+      .catch(() => {
+        if (isCancelled) return;
+        setIsSceneModuleLoaded(false);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
   }, []);
 
   useEffect(() => {
-    const isDay = worldClockDisplay.hour24 >= 6 && worldClockDisplay.hour24 < 18;
-    const iconHref = isDay ? DAY_ICON_PATH : NIGHT_ICON_PATH;
+    if (!shouldRenderScene || isSceneModuleLoaded) return undefined;
+    let isCancelled = false;
+    loadFocusRoomExperience()
+      .then(() => {
+        if (isCancelled) return;
+        setIsSceneModuleLoaded(true);
+      })
+      .catch(() => {
+        if (isCancelled) return;
+      });
+    return () => {
+      isCancelled = true;
+    };
+  }, [isSceneModuleLoaded, shouldRenderScene]);
+
+  useEffect(() => {
+    if (shouldRenderScene) return;
+    setIsSceneCanvasReady(false);
+  }, [shouldRenderScene]);
+
+  useEffect(() => {
+    if (!activeMusicVideoId) return;
+    if (trackMetadataByVideoId[activeMusicVideoId]) return;
+
+    const controller = new AbortController();
+    fetchYouTubeVideoMetadata(activeMusicVideoId, { signal: controller.signal })
+      .then((metadata) => {
+        const fallbackMetadata = {
+          title: `Song ${activeMusicSlot + 1}`,
+          channelName: "Unknown channel",
+        };
+        setTrackMetadataByVideoId((prev) => {
+          if (prev[activeMusicVideoId]) return prev;
+          return {
+            ...prev,
+            [activeMusicVideoId]: metadata || fallbackMetadata,
+          };
+        });
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return;
+        setTrackMetadataByVideoId((prev) => {
+          if (prev[activeMusicVideoId]) return prev;
+          return {
+            ...prev,
+            [activeMusicVideoId]: {
+              title: `Song ${activeMusicSlot + 1}`,
+              channelName: "Unknown channel",
+            },
+          };
+        });
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [activeMusicVideoId, activeMusicSlot, trackMetadataByVideoId]);
+
+  useEffect(() => {
+    if (!user || !radioSyncEnabled || !isRadioOn || !boardPomodoro.isRunning) return;
+    const targetSlot = boardPomodoro.isBreak ? breakSyncSlot : focusSyncSlot;
+    setActiveMusicSlot((currentSlot) => (currentSlot === targetSlot ? currentSlot : targetSlot));
+  }, [
+    user,
+    radioSyncEnabled,
+    isRadioOn,
+    boardPomodoro.isRunning,
+    boardPomodoro.isBreak,
+    focusSyncSlot,
+    breakSyncSlot,
+  ]);
+
+  useEffect(() => {
+    const isDay = worldClockDisplay.hour24 >= DAY_START_HOUR && worldClockDisplay.hour24 < DAY_END_HOUR;
+    const iconHref = isDay ? dayIcon : nightIcon;
     let favicon = document.querySelector("#app-favicon");
     if (!favicon) {
       favicon = document.querySelector("link[rel='icon']");
@@ -178,8 +327,15 @@ function App() {
   }, [worldClockDisplay]);
 
   return (
-    <div className="focus-room-app">
-      <WelcomeOverlay />
+    <div className={`focus-room-app${showAuthModal ? " auth-stage" : ""}`}>
+      {!isWelcomeComplete ? (
+        <WelcomeOverlay
+          canDismiss
+          onComplete={() => {
+            setIsWelcomeComplete(true);
+          }}
+        />
+      ) : null}
       {showAuthModal ? <AuthModal /> : null}
       {user ? <SettingsButton onClick={() => setIsSettingsOpen(true)} /> : null}
       {user ? (
@@ -191,27 +347,30 @@ function App() {
         />
       ) : null}
       {sceneInteractable ? <FocusRoomHud /> : null}
-      <Suspense fallback={<div className="focus-room-scene-fallback" aria-hidden="true" />}>
-        <FocusRoomExperience
-          boardPomodoro={boardPomodoro}
-          boardTodo={boardTodo}
-          isCameraLocked={isCameraLocked}
-          hotkeysEnabled={hotkeysEnabled}
-          isInteractable={sceneInteractable}
-          isMusicPlaying={isMusicPlaying}
-          onOpenCalendarPopup={openCalendarPopup}
-          onOpenBoardPopup={openBoardPopup}
-          onOpenStatsPopup={openStatsCard}
-          onToggleBoardPopup={toggleBoardPopup}
-          onToggleCalendarPopup={toggleCalendarPopup}
-          onToggleStatsPopup={toggleStatsCard}
-          focusScore={focusScore}
-          taskScore={taskScore}
-          onWorldClockDisplayChange={setWorldClockDisplay}
-          onToggleMusic={toggleMusic}
-          onSelectMusicSlot={selectMusicSlot}
-        />
-      </Suspense>
+      {shouldRenderScene ? (
+        <Suspense fallback={<div className="focus-room-scene-fallback" aria-hidden="true" />}>
+          <FocusRoomExperience
+            boardPomodoro={boardPomodoro}
+            boardTodo={boardTodo}
+            isCameraLocked={isCameraLocked}
+            hotkeysEnabled={hotkeysEnabled}
+            isInteractable={sceneInteractable}
+            isMusicPlaying={isRadioOn}
+            onOpenCalendarPopup={openCalendarPopup}
+            onOpenBoardPopup={openBoardPopup}
+            onOpenStatsPopup={openStatsCard}
+            onToggleBoardPopup={toggleBoardPopup}
+            onToggleCalendarPopup={toggleCalendarPopup}
+            onToggleStatsPopup={toggleStatsCard}
+            focusScore={focusScore}
+            taskScore={taskScore}
+            onWorldClockDisplayChange={setWorldClockDisplay}
+            onToggleMusic={toggleMusic}
+            onSelectMusicSlot={selectMusicSlot}
+            onSceneReady={handleSceneReady}
+          />
+        </Suspense>
+      ) : null}
 
       {user ? (
         <FocusRoomPopup isOpen={isBoardPopupOpen} onClose={() => setIsBoardPopupOpen(false)}>
@@ -242,7 +401,18 @@ function App() {
         />
       ) : null}
 
-      {user && isMusicPlaying ? (
+      {showCurrentlyPlaying ? (
+        <div className="currently-playing-shell">
+          <CurrentlyPlaying
+            artist={currentTrackArtist}
+            onTogglePlay={togglePauseMusic}
+            playing={isMusicPlaying}
+            title={currentTrackTitle}
+          />
+        </div>
+      ) : null}
+
+      {shouldRenderMusicPlayer ? (
         <RoomMusicPlayer isPlaying={isMusicPlaying} sourceUrl={activeMusicUrl} />
       ) : null}
     </div>

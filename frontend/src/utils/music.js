@@ -1,6 +1,6 @@
-export const MAX_MUSIC_SLOTS = 5;
-export const DEFAULT_MUSIC_URL = "https://www.youtube.com/watch?v=6Wurxv2x9cA";
-export const DEFAULT_MUSIC_URLS = Object.freeze([DEFAULT_MUSIC_URL, "", "", "", ""]);
+import { DEFAULT_MUSIC_URL, MAX_MUSIC_SLOTS } from "../constants/musicConstants";
+
+const YOUTUBE_METADATA_CACHE = new Map();
 
 function normalizeSlotValue(value) {
   if (typeof value !== "string") return "";
@@ -53,12 +53,42 @@ export function extractYouTubeVideoId(value) {
   return candidate && /^[a-zA-Z0-9_-]{11}$/.test(candidate) ? candidate : null;
 }
 
-export function hasPlayableMusicUrl(value) {
-  return Boolean(extractYouTubeVideoId(value));
-}
-
 export function buildYouTubeEmbedUrl(value) {
   const videoId = extractYouTubeVideoId(value);
   if (!videoId) return null;
-  return `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=0&loop=1&playlist=${videoId}&rel=0&modestbranding=1`;
+  const origin =
+    typeof window !== "undefined" && window.location?.origin
+      ? `&origin=${encodeURIComponent(window.location.origin)}`
+      : "";
+  return `https://www.youtube.com/embed/${videoId}?autoplay=0&controls=0&loop=1&playlist=${videoId}&rel=0&modestbranding=1&enablejsapi=1${origin}`;
+}
+
+export async function fetchYouTubeVideoMetadata(videoId, { signal } = {}) {
+  if (!videoId || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) return null;
+  const cached = YOUTUBE_METADATA_CACHE.get(videoId);
+  if (cached) return cached;
+
+  const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
+  const endpoints = [
+    `https://www.youtube.com/oembed?url=${encodeURIComponent(watchUrl)}&format=json`,
+    `https://noembed.com/embed?url=${encodeURIComponent(watchUrl)}`,
+  ];
+
+  for (const endpoint of endpoints) {
+    try {
+      const response = await fetch(endpoint, { signal });
+      if (!response.ok) continue;
+      const payload = await response.json();
+      const title = typeof payload?.title === "string" ? payload.title.trim() : "";
+      const channelName = typeof payload?.author_name === "string" ? payload.author_name.trim() : "";
+      if (!title || !channelName) continue;
+      const metadata = { title, channelName };
+      YOUTUBE_METADATA_CACHE.set(videoId, metadata);
+      return metadata;
+    } catch (error) {
+      if (signal?.aborted) throw error;
+    }
+  }
+
+  return null;
 }
