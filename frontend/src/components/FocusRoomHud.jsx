@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 const HUD_BINDS = [
   "T - Todo List / Plant",
@@ -8,22 +8,28 @@ const HUD_BINDS = [
   "1-5 - Select Radio Song",
 ];
 
-export function FocusRoomHud() {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+export function FocusRoomHud({ isCollapsed = false, onCollapsedChange }) {
   const hudRef = useRef(null);
+  const setCollapsed = useCallback(
+    (nextValue) => {
+      if (typeof onCollapsedChange !== "function") return;
+      onCollapsedChange(nextValue);
+    },
+    [onCollapsedChange],
+  );
 
   useEffect(() => {
     const handlePointerDown = (event) => {
       if (!hudRef.current) return;
       if (hudRef.current.contains(event.target)) return;
-      setIsCollapsed(true);
+      setCollapsed(true);
     };
 
     window.addEventListener("pointerdown", handlePointerDown, true);
     return () => {
       window.removeEventListener("pointerdown", handlePointerDown, true);
     };
-  }, []);
+  }, [setCollapsed]);
 
   return (
     <div
@@ -35,7 +41,7 @@ export function FocusRoomHud() {
         aria-expanded={!isCollapsed}
         aria-label={isCollapsed ? "Show binds menu" : "Hide binds menu"}
         className="focus-room-hud-tab"
-        onClick={() => setIsCollapsed((prev) => !prev)}
+        onClick={() => setCollapsed(!isCollapsed)}
         type="button"
       >
         <span className="focus-room-hud-tab-label">BINDS</span>

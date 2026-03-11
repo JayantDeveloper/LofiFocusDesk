@@ -241,12 +241,8 @@ export function useBoardTodoItems() {
     const failedItems = persistedDoneItems.filter((_, index) => deletionResults[index].status === "rejected");
     if (failedItems.length === 0) return;
 
-    setItems((prev) => {
-      const existingIds = new Set(prev.map((item) => item.id));
-      const toRestore = failedItems.filter((item) => !existingIds.has(item.id));
-      if (toRestore.length === 0) return prev;
-      return sortByPositionThenId([...prev, ...toRestore]);
-    });
+    // Keep completed items removed from the UI even if a delete request fails.
+    // This avoids tasks popping back into the board after the user clicks Done.
     setDoneDeletedTasks((prev) => Math.max(0, prev - failedItems.length));
   }, [items, user]);
 

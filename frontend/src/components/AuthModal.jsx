@@ -2,6 +2,13 @@ import { useState } from "react";
 import { useAuth } from "../store/AuthStore";
 import "./AuthModal.css";
 
+function getAuthErrorMessage(mode, error) {
+  const message = typeof error?.message === "string" ? error.message.trim() : "";
+  if (message) return message;
+  if (mode === "register") return "Unable to create account right now.";
+  return "Unable to log in right now.";
+}
+
 export function AuthModal() {
   const { login, register, user } = useAuth();
   const [mode, setMode] = useState("login");
@@ -24,7 +31,7 @@ export function AuthModal() {
         await register(username, password);
       }
     } catch (err) {
-      setError(err.message || "Invalid credentials");
+      setError(getAuthErrorMessage(mode, err));
     }
   };
 

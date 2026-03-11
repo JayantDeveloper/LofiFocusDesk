@@ -16,6 +16,10 @@ fs.mkdirSync(dbDir, { recursive: true });
 const db = new Database(dbPath);
 db.pragma("journal_mode = WAL");
 db.pragma("foreign_keys = ON");
+db.pragma("synchronous = NORMAL");
+db.pragma("temp_store = MEMORY");
+db.pragma("cache_size = -20000");
+db.pragma("busy_timeout = 5000");
 
 // Schema bootstrap (idempotent)
 db.exec(`
@@ -54,6 +58,7 @@ CREATE TABLE IF NOT EXISTS pomodoro_state (
 
 CREATE INDEX IF NOT EXISTS idx_tasks_user ON tasks(user_id, position, id);
 CREATE INDEX IF NOT EXISTS idx_tasks_user_done ON tasks(user_id, done);
+CREATE INDEX IF NOT EXISTS idx_users_username_nocase ON users(username COLLATE NOCASE);
 `);
 
 const userColumns = new Set(

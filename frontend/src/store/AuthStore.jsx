@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { apiRequest, clearAuthToken, setAuthToken } from "../utils/apiClient";
 
 const AuthContext = createContext(null);
+const REMEMBER_SESSION_BY_DEFAULT = true;
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -20,10 +21,12 @@ export function AuthProvider({ children }) {
         if (!nextUser) {
           clearAuthToken();
         }
-      } catch {
+      } catch (error) {
         if (!isMounted) return;
         setUser(null);
-        clearAuthToken();
+        if (error?.status === 401) {
+          clearAuthToken();
+        }
       } finally {
         if (!isMounted) return;
         setLoading(false);
@@ -39,7 +42,11 @@ export function AuthProvider({ children }) {
   const login = async (username, password) => {
     const data = await apiRequest("/api/auth/login", {
       method: "POST",
-      body: { username, password, remember: false },
+      body: {
+        username: typeof username === "string" ? username.trim() : "",
+        password,
+        remember: REMEMBER_SESSION_BY_DEFAULT,
+      },
     });
 
     if (data?.token) {
@@ -53,7 +60,11 @@ export function AuthProvider({ children }) {
   const register = async (username, password) => {
     const data = await apiRequest("/api/auth/register", {
       method: "POST",
-      body: { username, password, remember: false },
+      body: {
+        username: typeof username === "string" ? username.trim() : "",
+        password,
+        remember: REMEMBER_SESSION_BY_DEFAULT,
+      },
     });
 
     if (data?.token) {

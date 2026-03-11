@@ -64,6 +64,7 @@ function App() {
   const [trackMetadataByVideoId, setTrackMetadataByVideoId] = useState({});
   const lastAuthEventRef = useRef(0);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isHudCollapsed, setIsHudCollapsed] = useState(false);
   const [worldClockDisplay, setWorldClockDisplay] = useState(() => getInitialClockDisplay());
   const { user, authEventId } = useAuth();
   const showAuthModal = isWelcomeComplete && !user;
@@ -346,7 +347,12 @@ function App() {
           }}
         />
       ) : null}
-      {sceneInteractable ? <FocusRoomHud /> : null}
+      {sceneInteractable ? (
+        <FocusRoomHud
+          isCollapsed={isHudCollapsed}
+          onCollapsedChange={setIsHudCollapsed}
+        />
+      ) : null}
       {shouldRenderScene ? (
         <Suspense fallback={<div className="focus-room-scene-fallback" aria-hidden="true" />}>
           <FocusRoomExperience

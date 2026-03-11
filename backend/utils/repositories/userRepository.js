@@ -2,7 +2,7 @@ const db = require("../db");
 
 const stmtFindUserByUsername = db.prepare(`
   SELECT * FROM users
-  WHERE lower(username) = lower(?)
+  WHERE username = ? COLLATE NOCASE
   LIMIT 1
 `);
 

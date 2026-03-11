@@ -20,6 +20,13 @@ const {
   findUserByUsername,
 } = require("../utils/repositories/userRepository");
 const { userJson } = require("../utils/userResponseUtils");
+const DEFAULT_BCRYPT_SALT_ROUNDS = 10;
+
+function getBcryptSaltRounds() {
+  const configuredRounds = Number.parseInt(process.env.BCRYPT_SALT_ROUNDS || "", 10);
+  if (!Number.isInteger(configuredRounds)) return DEFAULT_BCRYPT_SALT_ROUNDS;
+  return Math.min(14, Math.max(8, configuredRounds));
+}
 
 function signToken(userId, remember) {
   return jwt.sign({ sub: String(userId) }, JWT_SECRET, {
@@ -42,11 +49,11 @@ async function register(req, res) {
   }
 
   if (findUserByUsername(normalizedUsername)) {
-    res.status(400).json({ error: "Username already exists" });
+    res.status(409).json({ error: "An account with this username already exists." });
     return;
   }
 
-  const passwordHash = await bcrypt.hash(password, 12);
+  const passwordHash = await bcrypt.hash(password, getBcryptSaltRounds());
   const user = createUser({
     username: normalizedUsername,
     passwordHash,
@@ -76,13 +83,13 @@ async function login(req, res) {
   const user = findUserByUsername(normalizedUsername);
 
   if (!user) {
-    res.status(401).json({ error: "Invalid credentials" });
+    res.status(404).json({ error: "No account found with that username." });
     return;
   }
 
   const matches = await bcrypt.compare(password, user.password_hash);
   if (!matches) {
-    res.status(401).json({ error: "Invalid credentials" });
+    res.status(401).json({ error: "Incorrect password." });
     return;
   }
 
