@@ -87,12 +87,14 @@ export function useBoardTodoItems() {
   const [items, setItems] = useState([]);
   const [doneDeletedTasks, setDoneDeletedTasks] = useState(0);
   const [totalCreatedTasks, setTotalCreatedTasks] = useState(0);
+  const [isHydrating, setIsHydrating] = useState(true);
   const taskScoreStorageKey = useMemo(() => getTaskScoreStorageKey(user), [user]);
 
   useEffect(() => {
     let isMounted = true;
     async function load() {
       if (user) {
+        setIsHydrating(true);
         try {
           const data = await apiRequest("/api/tasks");
           if (!isMounted) return;
@@ -113,8 +115,12 @@ export function useBoardTodoItems() {
           setItems([]);
           setDoneDeletedTasks(0);
           setTotalCreatedTasks(0);
+        } finally {
+          if (!isMounted) return;
+          setIsHydrating(false);
         }
       } else {
+        setIsHydrating(true);
         setItems([]);
         setDoneDeletedTasks(0);
         setTotalCreatedTasks(0);
@@ -300,6 +306,8 @@ export function useBoardTodoItems() {
       handleDragOver,
       handleDragStart,
       handleDrop,
+      isHydrating,
+      isReady: !isHydrating,
       items,
       removeDoneItems,
       resetTaskScore,
@@ -316,6 +324,7 @@ export function useBoardTodoItems() {
       handleDragOver,
       handleDragStart,
       handleDrop,
+      isHydrating,
       items,
       removeDoneItems,
       resetTaskScore,

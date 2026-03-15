@@ -1,18 +1,11 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const {
-  DEFAULT_MUSIC_URLS,
-  DEFAULT_RADIO_BREAK_SLOT,
-  DEFAULT_RADIO_FOCUS_SLOT,
-  DEFAULT_RADIO_SYNC_ENABLED,
-} = require("../constants/musicConstants");
-const {
   JWT_SECRET,
   REMEMBER_EXPIRES_IN,
   TOKEN_EXPIRES_IN,
 } = require("../constants/serverConfig");
 const { clearAuthCookie, setAuthCookie } = require("../utils/cookieUtils");
-const { serializeMusicUrls } = require("../utils/musicPreferenceUtils");
 const { normalizeUsername } = require("../utils/normalizeUtils");
 const {
   createUser,
@@ -20,7 +13,10 @@ const {
   findUserByUsername,
 } = require("../utils/repositories/userRepository");
 const { userJson } = require("../utils/userResponseUtils");
+
 const DEFAULT_BCRYPT_SALT_ROUNDS = 10;
+const USERNAME_MIN_LENGTH = 3;
+const PASSWORD_MIN_LENGTH = 8;
 
 function getBcryptSaltRounds() {
   const configuredRounds = Number.parseInt(process.env.BCRYPT_SALT_ROUNDS || "", 10);
@@ -34,70 +30,89 @@ function signToken(userId, remember) {
   });
 }
 
+function isDuplicateUserError(error) {
+  return (
+    error &&
+    error.code === "SQLITE_CONSTRAINT" &&
+    /UNIQUE constraint failed: users\.username/i.test(error.message || "")
+  );
+}
+
 async function register(req, res) {
   const { username = "", password = "", remember = false } = req.body || {};
   const normalizedUsername = normalizeUsername(username);
-
-  if (normalizedUsername.length < 3) {
-    res.status(400).json({ error: "Username must be at least 3 characters" });
-    return;
-  }
-
-  if (password.length < 8) {
-    res.status(400).json({ error: "Password must be at least 8 characters" });
-    return;
-  }
-
-  if (findUserByUsername(normalizedUsername)) {
-    res.status(409).json({ error: "An account with this username already exists." });
-    return;
-  }
-
-  const passwordHash = await bcrypt.hash(password, getBcryptSaltRounds());
-  const user = createUser({
-    username: normalizedUsername,
-    passwordHash,
-    displayName: normalizedUsername,
-    calendarEmbed: "",
-    musicUrls: serializeMusicUrls(DEFAULT_MUSIC_URLS),
-    radioSyncEnabled: DEFAULT_RADIO_SYNC_ENABLED ? 1 : 0,
-    radioFocusSlot: DEFAULT_RADIO_FOCUS_SLOT,
-    radioBreakSlot: DEFAULT_RADIO_BREAK_SLOT,
-  });
-
-  if (!user) {
-    res.status(500).json({ error: "Failed to create account" });
-    return;
-  }
-
+  const passwordString = typeof password === "string" ? password : "";
   const shouldRemember = remember === true;
-  const token = signToken(user.id, shouldRemember);
-  setAuthCookie(res, token, shouldRemember);
 
-  res.json({ user: userJson(user), token });
+  if (normalizedUsername.length < USERNAME_MIN_LENGTH) {
+    res.status(400).json({ error: `Username must be at least ${USERNAME_MIN_LENGTH} characters` });
+    return;
+  }
+
+  if (passwordString.length < PASSWORD_MIN_LENGTH) {
+    res.status(400).json({ error: `Password must be at least ${PASSWORD_MIN_LENGTH} characters` });
+    return;
+  }
+
+  try {
+    const user = createUser({
+      username: normalizedUsername,
+      passwordHash: await bcrypt.hash(passwordString, getBcryptSaltRounds()),
+    });
+
+    if (!user) {
+      res.status(500).json({ error: "Failed to create account" });
+      return;
+    }
+
+    const token = signToken(user.id, shouldRemember);
+    setAuthCookie(res, token, shouldRemember);
+
+    res.status(201).json({ user: userJson(user) });
+  } catch (error) {
+    if (isDuplicateUserError(error)) {
+      res.status(409).json({ error: "An account with this username already exists." });
+      return;
+    }
+
+    console.error("[auth] register error", error);
+    res.status(500).json({ error: "Failed to create account" });
+  }
 }
 
 async function login(req, res) {
   const { username = "", password = "", remember = false } = req.body || {};
   const normalizedUsername = normalizeUsername(username);
-  const user = findUserByUsername(normalizedUsername);
-
-  if (!user) {
-    res.status(404).json({ error: "No account found with that username." });
-    return;
-  }
-
-  const matches = await bcrypt.compare(password, user.password_hash);
-  if (!matches) {
-    res.status(401).json({ error: "Incorrect password." });
-    return;
-  }
-
+  const passwordString = typeof password === "string" ? password : "";
   const shouldRemember = remember === true;
-  const token = signToken(user.id, shouldRemember);
-  setAuthCookie(res, token, shouldRemember);
 
-  res.json({ user: userJson(user), token });
+  if (!normalizedUsername || !passwordString) {
+    res.status(400).json({ error: "Username and password are required." });
+    return;
+  }
+
+  try {
+    const user = findUserByUsername(normalizedUsername);
+
+    if (!user) {
+      res.status(401).json({ error: "Invalid username or password." });
+      return;
+    }
+
+    const matches = await bcrypt.compare(passwordString, user.password_hash);
+    if (!matches) {
+      res.status(401).json({ error: "Invalid username or password." });
+      return;
+    }
+
+    const token = signToken(user.id, shouldRemember);
+    setAuthCookie(res, token, shouldRemember);
+
+    res.json({ user: userJson(user) });
+  } catch (error) {
+    console.error("[auth] login error", error);
+    res.status(500).json({ error: "Login failed" });
+  }
 }
 
 function logout(_req, res) {
@@ -111,8 +126,18 @@ function getCurrentUser(req, res) {
     return;
   }
 
-  const user = findUserById(req.userId);
-  res.json({ user: userJson(user) });
+  try {
+    const user = findUserById(req.userId);
+    if (!user) {
+      res.status(401).json({ user: null });
+      return;
+    }
+
+    res.json({ user: userJson(user) });
+  } catch (error) {
+    console.error("[auth] getCurrentUser error", error);
+    res.status(500).json({ error: "Unable to retrieve account" });
+  }
 }
 
 module.exports = {

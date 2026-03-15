@@ -1,11 +1,22 @@
 import { Canvas, useFrame } from "@react-three/fiber";
-import { useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { FocusRoomScene } from "./FocusRoomScene";
 
 const AA_DPR_RANGE = [1, 1.5];
 
-function SceneReadySignal({ onSceneReady }) {
+function getMaxDpr() {
+  if (typeof window === "undefined") return AA_DPR_RANGE[1];
+  const ratio = window.devicePixelRatio;
+  if (!ratio || !Number.isFinite(ratio)) return AA_DPR_RANGE[0];
+  return Math.max(AA_DPR_RANGE[0], Math.min(AA_DPR_RANGE[1], ratio));
+}
+
+function SceneReadySignal({ onSceneReady, sceneSession }) {
   const hasSignaledReadyRef = useRef(false);
+
+  useEffect(() => {
+    hasSignaledReadyRef.current = false;
+  }, [sceneSession]);
 
   useFrame(() => {
     if (!onSceneReady || hasSignaledReadyRef.current) return;
@@ -26,28 +37,32 @@ export default function FocusRoomExperience({
   onOpenCalendarPopup,
   onOpenBoardPopup,
   onOpenStatsPopup,
-  onSelectMusicSlot,
   onToggleBoardPopup,
   onToggleCalendarPopup,
   onToggleMusic,
   onToggleStatsPopup,
+  onSelectMusicSlot,
   onWorldClockDisplayChange,
   onSceneReady,
+  sceneSession,
   focusScore,
   taskScore,
 }) {
+  const maxDpr = useMemo(() => getMaxDpr(), []);
+
   return (
     <Canvas
-      dpr={AA_DPR_RANGE}
+      dpr={[AA_DPR_RANGE[0], maxDpr]}
       gl={{
         alpha: false,
         antialias: true,
         depth: true,
         powerPreference: "high-performance",
         precision: "mediump",
+        preserveDrawingBuffer: false,
         stencil: false,
       }}
-      performance={{ min: 0.35, debounce: 180 }}
+      performance={{ min: 0.5, debounce: 220 }}
       camera={{
         position: [-2.02, 1.42, -0.79],
         fov: 46,
@@ -55,7 +70,7 @@ export default function FocusRoomExperience({
         far: 40,
       }}
     >
-      <SceneReadySignal onSceneReady={onSceneReady} />
+      <SceneReadySignal onSceneReady={onSceneReady} sceneSession={sceneSession} />
       <FocusRoomScene
         boardPomodoro={boardPomodoro}
         boardTodo={boardTodo}

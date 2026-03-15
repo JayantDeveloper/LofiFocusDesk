@@ -15,6 +15,7 @@ export function useBoardPomodoroState() {
   const [isBreak, setIsBreak] = useState(false);
   const [timeLeft, setTimeLeft] = useState(WORK_SECONDS);
   const [completedFocusSessions, setCompletedFocusSessions] = useState(0);
+  const [isHydrating, setIsHydrating] = useState(true);
   const completionAudioRef = useRef(null);
   const stopAlarmTimeoutRef = useRef(null);
   const skipHydrationSessionRef = useRef("");
@@ -27,8 +28,10 @@ export function useBoardPomodoroState() {
 
   useEffect(() => {
     if (!authSessionKey) return;
+    let isMounted = true;
     async function load() {
       if (!user) return;
+      setIsHydrating(true);
       try {
         const data = await apiRequest("/api/pomodoro");
         if (skipHydrationSessionRef.current === authSessionKey) return;
@@ -39,10 +42,27 @@ export function useBoardPomodoroState() {
         setCompletedFocusSessions(state.completedFocusSessions ?? 0);
       } catch {
         return;
+      } finally {
+        if (isMounted) {
+          setIsHydrating(false);
+        }
       }
     }
     load();
+    return () => {
+      isMounted = false;
+    };
   }, [authSessionKey, user]);
+
+  useEffect(() => {
+    if (!authSessionKey) {
+      setIsHydrating(true);
+      setIsRunning(false);
+      setIsBreak(false);
+      setTimeLeft(WORK_SECONDS);
+      setCompletedFocusSessions(0);
+    }
+  }, [authSessionKey]);
 
   useEffect(() => {
     return () => {
@@ -164,12 +184,14 @@ export function useBoardPomodoroState() {
       isBreak,
       isRunning,
       completedFocusSessions,
+      isHydrating,
+      isReady: !isHydrating,
       resetTimer,
       resetFocusScore,
       switchMode,
       timeLeft,
       toggleRunning,
     }),
-    [completedFocusSessions, isBreak, isRunning, resetTimer, resetFocusScore, switchMode, timeLeft, toggleRunning],
+    [completedFocusSessions, isBreak, isHydrating, isRunning, resetTimer, resetFocusScore, switchMode, timeLeft, toggleRunning],
   );
 }

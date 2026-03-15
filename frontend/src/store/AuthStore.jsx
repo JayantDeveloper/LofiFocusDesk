@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { apiRequest, clearAuthToken, setAuthToken } from "../utils/apiClient";
+import { apiRequest } from "../utils/apiClient";
 
 const AuthContext = createContext(null);
 const REMEMBER_SESSION_BY_DEFAULT = true;
@@ -8,6 +8,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [authEventId, setAuthEventId] = useState(0);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -18,15 +19,9 @@ export function AuthProvider({ children }) {
         if (!isMounted) return;
         const nextUser = data?.user || null;
         setUser(nextUser);
-        if (!nextUser) {
-          clearAuthToken();
-        }
       } catch (error) {
         if (!isMounted) return;
         setUser(null);
-        if (error?.status === 401) {
-          clearAuthToken();
-        }
       } finally {
         if (!isMounted) return;
         setLoading(false);
@@ -39,7 +34,16 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  const login = async (username, password) => {
+  const runAuthAction = async (action) => {
+    setIsAuthenticating(true);
+    try {
+      return await action();
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  const login = async (username, password) => runAuthAction(async () => {
     const data = await apiRequest("/api/auth/login", {
       method: "POST",
       body: {
@@ -49,15 +53,11 @@ export function AuthProvider({ children }) {
       },
     });
 
-    if (data?.token) {
-      setAuthToken(data.token);
-    }
-
     setUser(data?.user || null);
     setAuthEventId((prev) => prev + 1);
-  };
+  });
 
-  const register = async (username, password) => {
+  const register = async (username, password) => runAuthAction(async () => {
     const data = await apiRequest("/api/auth/register", {
       method: "POST",
       body: {
@@ -67,13 +67,9 @@ export function AuthProvider({ children }) {
       },
     });
 
-    if (data?.token) {
-      setAuthToken(data.token);
-    }
-
     setUser(data?.user || null);
     setAuthEventId((prev) => prev + 1);
-  };
+  });
 
   const logout = async () => {
     try {
@@ -83,7 +79,6 @@ export function AuthProvider({ children }) {
     }
 
     setUser(null);
-    clearAuthToken();
   };
 
   const updateProfile = async (
@@ -112,8 +107,17 @@ export function AuthProvider({ children }) {
   };
 
   const value = useMemo(
-    () => ({ user, loading, login, register, logout, updateProfile, authEventId }),
-    [authEventId, loading, user],
+    () => ({
+      user,
+      loading,
+      isAuthenticating,
+      login,
+      register,
+      logout,
+      updateProfile,
+      authEventId,
+    }),
+    [authEventId, isAuthenticating, loading, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

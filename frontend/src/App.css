@@ -11,25 +11,68 @@
 }
 
 .focus-room-app.auth-stage {
-  background:
-    radial-gradient(140% 100% at 20% 10%, rgba(255, 213, 155, 0.22) 0%, rgba(255, 213, 155, 0.06) 35%, rgba(32, 22, 15, 0.74) 100%),
-    repeating-linear-gradient(
-      8deg,
-      rgba(123, 83, 54, 0.23) 0px,
-      rgba(123, 83, 54, 0.23) 16px,
-      rgba(95, 62, 40, 0.26) 16px,
-      rgba(95, 62, 40, 0.26) 34px
-    ),
-    linear-gradient(180deg, #7a5135 0%, #5f3e2a 48%, #3d271a 100%);
+  background: linear-gradient(180deg, #a07f60 0%, #664c33 48%, #3a2615 100%);
 }
 
-.focus-room-scene-fallback {
+.focus-room-scene-shell {
   position: absolute;
   inset: 0;
+  opacity: 0;
+  visibility: hidden;
   pointer-events: none;
-  background:
-    radial-gradient(90% 80% at 70% 20%, rgba(255, 205, 144, 0.34) 0%, rgba(255, 205, 144, 0.08) 34%, rgba(40, 58, 86, 0.56) 70%, rgba(18, 24, 35, 0.95) 100%),
-    linear-gradient(180deg, rgba(170, 196, 222, 0.82) 0%, rgba(107, 132, 166, 0.72) 40%, rgba(45, 54, 69, 0.9) 100%);
+  z-index: 0;
+  transition:
+    opacity 200ms ease,
+    visibility 0s linear 200ms;
+}
+
+.focus-room-scene-shell.is-visible {
+  visibility: visible;
+  pointer-events: auto;
+  opacity: 1;
+  transition:
+    opacity 200ms ease;
+}
+
+.focus-room-auth-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 9880;
+  background: linear-gradient(180deg, #a88667 0%, #6f5237 46%, #402611 100%);
+  color: #e2e8f0;
+  display: grid;
+  place-items: center;
+  font-family: "Manrope", "Avenir Next", sans-serif;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  pointer-events: none;
+  font-weight: 700;
+  overflow: hidden;
+}
+
+.focus-room-auth-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 9950;
+  pointer-events: none;
+}
+
+.focus-room-auth-layer > * {
+  pointer-events: auto;
+}
+
+.focus-room-scene-shell canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.focus-room-scene-shell > * {
+  pointer-events: auto;
+}
+
+.focus-room-scene-shell {
+  background: #1a1610;
 }
 
 .currently-playing-shell {

@@ -8,30 +8,26 @@ const stmtFindUserByUsername = db.prepare(`
 
 const stmtFindUserById = db.prepare("SELECT * FROM users WHERE id = ?");
 
-const stmtInsertUser = db.prepare(`
+const stmtInsertUserReturning = db.prepare(`
   INSERT INTO users (
     username,
-    password_hash,
-    display_name,
-    calendar_embed,
-    music_urls,
-    radio_sync_enabled,
-    radio_focus_slot,
-    radio_break_slot
+    password_hash
   )
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  VALUES (?, ?)
+  RETURNING *
 `);
 
-const stmtUpdateUser = db.prepare(`
+const stmtUpdateUserProfile = db.prepare(`
   UPDATE users
   SET
-    display_name = ?,
-    calendar_embed = ?,
-    music_urls = ?,
-    radio_sync_enabled = ?,
-    radio_focus_slot = ?,
-    radio_break_slot = ?
+    display_name = COALESCE(?, display_name),
+    calendar_embed = COALESCE(?, calendar_embed),
+    music_urls = COALESCE(?, music_urls),
+    radio_sync_enabled = COALESCE(?, radio_sync_enabled),
+    radio_focus_slot = COALESCE(?, radio_focus_slot),
+    radio_break_slot = COALESCE(?, radio_break_slot)
   WHERE id = ?
+  RETURNING *
 `);
 
 function findUserByUsername(username) {
@@ -45,25 +41,8 @@ function findUserById(userId) {
 function createUser({
   username,
   passwordHash,
-  displayName,
-  calendarEmbed,
-  musicUrls,
-  radioSyncEnabled,
-  radioFocusSlot,
-  radioBreakSlot,
 }) {
-  const info = stmtInsertUser.run(
-    username,
-    passwordHash,
-    displayName,
-    calendarEmbed,
-    musicUrls,
-    radioSyncEnabled,
-    radioFocusSlot,
-    radioBreakSlot,
-  );
-
-  return findUserById(info.lastInsertRowid);
+  return stmtInsertUserReturning.get(username, passwordHash);
 }
 
 function updateUserProfile(userId, {
@@ -74,7 +53,7 @@ function updateUserProfile(userId, {
   radioFocusSlot,
   radioBreakSlot,
 }) {
-  stmtUpdateUser.run(
+  return stmtUpdateUserProfile.get(
     displayName,
     calendarEmbed,
     musicUrls,
@@ -83,8 +62,6 @@ function updateUserProfile(userId, {
     radioBreakSlot,
     userId,
   );
-
-  return findUserById(userId);
 }
 
 module.exports = {

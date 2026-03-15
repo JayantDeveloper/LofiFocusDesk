@@ -57,19 +57,29 @@ function App() {
   const [isCalendarPopupOpen, setIsCalendarPopupOpen] = useState(false);
   const [isStatsCardOpen, setIsStatsCardOpen] = useState(false);
   const [isSceneModuleLoaded, setIsSceneModuleLoaded] = useState(false);
-  const [isSceneCanvasReady, setIsSceneCanvasReady] = useState(false);
+  const [sceneReadySessionId, setSceneReadySessionId] = useState(0);
   const [isRadioOn, setIsRadioOn] = useState(false);
   const [isMusicPaused, setIsMusicPaused] = useState(false);
   const [activeMusicSlot, setActiveMusicSlot] = useState(0);
   const [trackMetadataByVideoId, setTrackMetadataByVideoId] = useState({});
   const lastAuthEventRef = useRef(0);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAuthScreenOpen, setIsAuthScreenOpen] = useState(true);
   const [isHudCollapsed, setIsHudCollapsed] = useState(false);
   const [worldClockDisplay, setWorldClockDisplay] = useState(() => getInitialClockDisplay());
-  const { user, authEventId } = useAuth();
-  const showAuthModal = isWelcomeComplete && !user;
-  const shouldRenderScene = isWelcomeComplete && Boolean(user);
-  const isAuthGateOpen = !user;
+  const { user, authEventId, loading, isAuthenticating } = useAuth();
+  const sceneSessionId = user ? authEventId : 0;
+  const isAuthStateLoading = loading || isAuthenticating;
+  const showAuthModal = isAuthScreenOpen;
+  const showAuthLoading = isAuthScreenOpen && isAuthStateLoading;
+  const shouldRenderScene = isWelcomeComplete && Boolean(user) && !isAuthScreenOpen;
+  const shouldRenderSceneShell = isSceneModuleLoaded && shouldRenderScene;
+  const boardPomodoro = useBoardPomodoroState();
+  const boardTodo = useBoardTodoItems();
+  const isSceneDataReady = user ? boardPomodoro.isReady && boardTodo.isReady : true;
+  const isSceneCanvasReady = sceneReadySessionId === sceneSessionId;
+  const isSceneReady = isSceneModuleLoaded && isSceneCanvasReady && isSceneDataReady;
+  const isSceneLoading = shouldRenderScene && !isSceneReady;
   const calendarEmbed = user?.calendar_embed || undefined;
   const musicUrls = normalizeMusicUrls(user?.music_urls);
   const radioSyncEnabled = user?.radio_sync_enabled === true;
@@ -85,22 +95,21 @@ function App() {
   const currentTrackArtist = activeMusicVideoId
     ? (activeTrackMetadata?.channelName || "Loading channel...")
     : "Add a valid YouTube URL in Settings";
-  const isSceneReady = shouldRenderScene && isSceneModuleLoaded && isSceneCanvasReady;
-  const isCameraLocked = isBoardPopupOpen || isCalendarPopupOpen || !user || isSettingsOpen;
+  const isSceneVisible = shouldRenderScene && isSceneReady;
+  const isCameraLocked =
+    isBoardPopupOpen || isCalendarPopupOpen || !user || isAuthScreenOpen || isSettingsOpen;
   const isFullscreenUiOpen = isBoardPopupOpen || isCalendarPopupOpen;
   const showCurrentlyPlaying = user && isRadioOn && !isFullscreenUiOpen;
   const shouldRenderMusicPlayer = user && isRadioOn;
   // Keep interactions off while auth/settings/popups are active.
   const sceneInteractable =
     isSceneReady &&
-    !isAuthGateOpen &&
+    !isAuthScreenOpen &&
     !isSettingsOpen &&
     !isBoardPopupOpen &&
     !isCalendarPopupOpen &&
     !isStatsCardOpen;
-  const hotkeysEnabled = isSceneReady && !isAuthGateOpen && !isSettingsOpen;
-  const boardPomodoro = useBoardPomodoroState();
-  const boardTodo = useBoardTodoItems();
+  const hotkeysEnabled = isSceneReady && !isAuthScreenOpen && !isSettingsOpen;
   const todoItems = boardTodo.items;
   const completedTasks = Math.max(0, boardTodo.doneDeletedTasks ?? 0);
   const totalTasks = Math.max(0, Number.isFinite(boardTodo.totalCreatedTasks) ? boardTodo.totalCreatedTasks : todoItems.length);
@@ -186,8 +195,15 @@ function App() {
     });
   }, []);
   const handleSceneReady = useCallback(() => {
-    setIsSceneCanvasReady(true);
-  }, []);
+    setSceneReadySessionId(sceneSessionId);
+  }, [sceneSessionId]);
+
+  useEffect(() => {
+    if (!isWelcomeComplete) return;
+    if (!user && !isAuthStateLoading) {
+      setIsAuthScreenOpen(true);
+    }
+  }, [isWelcomeComplete, isAuthStateLoading, user]);
 
   useEffect(() => {
     if (!user) {
@@ -235,27 +251,6 @@ function App() {
       isCancelled = true;
     };
   }, []);
-
-  useEffect(() => {
-    if (!shouldRenderScene || isSceneModuleLoaded) return undefined;
-    let isCancelled = false;
-    loadFocusRoomExperience()
-      .then(() => {
-        if (isCancelled) return;
-        setIsSceneModuleLoaded(true);
-      })
-      .catch(() => {
-        if (isCancelled) return;
-      });
-    return () => {
-      isCancelled = true;
-    };
-  }, [isSceneModuleLoaded, shouldRenderScene]);
-
-  useEffect(() => {
-    if (shouldRenderScene) return;
-    setIsSceneCanvasReady(false);
-  }, [shouldRenderScene]);
 
   useEffect(() => {
     if (!activeMusicVideoId) return;
@@ -328,7 +323,11 @@ function App() {
   }, [worldClockDisplay]);
 
   return (
-    <div className={`focus-room-app${showAuthModal ? " auth-stage" : ""}`}>
+    <div
+      className={`focus-room-app${
+        showAuthModal || showAuthLoading || isSceneLoading ? " auth-stage" : ""
+      }`}
+    >
       {!isWelcomeComplete ? (
         <WelcomeOverlay
           canDismiss
@@ -337,9 +336,16 @@ function App() {
           }}
         />
       ) : null}
-      {showAuthModal ? <AuthModal /> : null}
-      {user ? <SettingsButton onClick={() => setIsSettingsOpen(true)} /> : null}
-      {user ? (
+      <div className="focus-room-auth-layer">
+        {(showAuthLoading || isSceneLoading) ? (
+          <div className="focus-room-auth-veil">
+            {isSceneLoading ? "Loading room assets..." : "Preparing your workspace..."}
+          </div>
+        ) : null}
+        {showAuthModal ? <AuthModal onAuthed={() => setIsAuthScreenOpen(false)} /> : null}
+      </div>
+      {user && !isAuthScreenOpen ? <SettingsButton onClick={() => setIsSettingsOpen(true)} /> : null}
+      {user && !isAuthScreenOpen ? (
         <SettingsDrawer
           isOpen={isSettingsOpen}
           onClose={() => {
@@ -347,44 +353,49 @@ function App() {
           }}
         />
       ) : null}
+
+      {shouldRenderSceneShell ? (
+        <div className={`focus-room-scene-shell ${isSceneVisible ? "is-visible" : ""}`}>
+          <Suspense fallback={null}>
+            <FocusRoomExperience
+              boardPomodoro={boardPomodoro}
+              boardTodo={boardTodo}
+              sceneSession={sceneSessionId}
+              isCameraLocked={isCameraLocked}
+              hotkeysEnabled={hotkeysEnabled}
+              isInteractable={sceneInteractable}
+              isMusicPlaying={isRadioOn}
+              onOpenCalendarPopup={openCalendarPopup}
+              onOpenBoardPopup={openBoardPopup}
+              onOpenStatsPopup={openStatsCard}
+              onToggleBoardPopup={toggleBoardPopup}
+              onToggleCalendarPopup={toggleCalendarPopup}
+              onToggleStatsPopup={toggleStatsCard}
+              focusScore={focusScore}
+              taskScore={taskScore}
+              onWorldClockDisplayChange={setWorldClockDisplay}
+              onToggleMusic={toggleMusic}
+              onSelectMusicSlot={selectMusicSlot}
+              onSceneReady={handleSceneReady}
+            />
+          </Suspense>
+        </div>
+      ) : null}
+
       {sceneInteractable ? (
         <FocusRoomHud
           isCollapsed={isHudCollapsed}
           onCollapsedChange={setIsHudCollapsed}
         />
       ) : null}
-      {shouldRenderScene ? (
-        <Suspense fallback={<div className="focus-room-scene-fallback" aria-hidden="true" />}>
-          <FocusRoomExperience
-            boardPomodoro={boardPomodoro}
-            boardTodo={boardTodo}
-            isCameraLocked={isCameraLocked}
-            hotkeysEnabled={hotkeysEnabled}
-            isInteractable={sceneInteractable}
-            isMusicPlaying={isRadioOn}
-            onOpenCalendarPopup={openCalendarPopup}
-            onOpenBoardPopup={openBoardPopup}
-            onOpenStatsPopup={openStatsCard}
-            onToggleBoardPopup={toggleBoardPopup}
-            onToggleCalendarPopup={toggleCalendarPopup}
-            onToggleStatsPopup={toggleStatsCard}
-            focusScore={focusScore}
-            taskScore={taskScore}
-            onWorldClockDisplayChange={setWorldClockDisplay}
-            onToggleMusic={toggleMusic}
-            onSelectMusicSlot={selectMusicSlot}
-            onSceneReady={handleSceneReady}
-          />
-        </Suspense>
-      ) : null}
 
-      {user ? (
+      {user && !isAuthScreenOpen ? (
         <FocusRoomPopup isOpen={isBoardPopupOpen} onClose={() => setIsBoardPopupOpen(false)}>
           <FocusTodoBoardApp boardPomodoro={boardPomodoro} boardTodo={boardTodo} />
         </FocusRoomPopup>
       ) : null}
 
-      {user ? (
+      {user && !isAuthScreenOpen ? (
         <FocusRoomPopup
           contentClassName="focus-calendar-popup-content"
           isOpen={isCalendarPopupOpen}
@@ -394,7 +405,7 @@ function App() {
         </FocusRoomPopup>
       ) : null}
 
-      {user ? (
+      {user && !isAuthScreenOpen ? (
         <FocusStatsCard
           completedFocusSessions={completedFocusSessions}
           completedTasks={completedTasks}
@@ -407,7 +418,7 @@ function App() {
         />
       ) : null}
 
-      {showCurrentlyPlaying ? (
+      {user && !isAuthScreenOpen && showCurrentlyPlaying ? (
         <div className="currently-playing-shell">
           <CurrentlyPlaying
             artist={currentTrackArtist}
@@ -418,7 +429,7 @@ function App() {
         </div>
       ) : null}
 
-      {shouldRenderMusicPlayer ? (
+      {user && !isAuthScreenOpen && shouldRenderMusicPlayer ? (
         <RoomMusicPlayer isPlaying={isMusicPlaying} sourceUrl={activeMusicUrl} />
       ) : null}
     </div>

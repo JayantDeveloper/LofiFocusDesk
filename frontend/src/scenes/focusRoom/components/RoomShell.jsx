@@ -43,7 +43,7 @@ const CITY_BUILDINGS = [
     roof: 0.06,
     width: 0.32,
     x: 0.46,
-    z: 0.05,
+    z: -0.05,
   },
   {
     accent: "#9eb0c4",
@@ -207,6 +207,7 @@ const OUTSIDE_CLUSTER_Z_SHIFT = -0.92;
 const BUILDING_HEIGHT_SCALE = 0.75;
 const MIN_BUILDING_WIDTH = 0.38;
 const MIN_BUILDING_DEPTH = 0.48;
+const BUILDING_WINDOW_DENSITY_BOOST = 1.3;
 const FRONT_WINDOW_INSET = 0.0036;
 const SIDE_WINDOW_INSET = 0.0036;
 const SUN_RAY_LAYER_COUNT = 20;
@@ -355,13 +356,17 @@ function getNightLightingStrength(worldHour) {
   return clamp01(Math.max(sunsetFadeIn, sunriseFadeOut));
 }
 
+function increaseWindowCount(value) {
+  return Math.round(value * BUILDING_WINDOW_DENSITY_BOOST);
+}
+
 function CityBuilding({ building, frontWindowMaterial, sideWindowMaterial }) {
   const scaledHeight = building.height * BUILDING_HEIGHT_SCALE;
   const scaledWidth = Math.max(building.width, MIN_BUILDING_WIDTH);
   const scaledDepth = Math.max(building.depth, MIN_BUILDING_DEPTH);
-  const windowRows = Math.max(3, Math.floor(scaledHeight / 0.29));
-  const windowColsFront = Math.max(2, Math.floor(scaledWidth / 0.14));
-  const windowColsSide = Math.max(2, Math.floor(scaledDepth / 0.15));
+  const windowRows = Math.max(3, increaseWindowCount(scaledHeight / 0.29));
+  const windowColsFront = Math.max(2, increaseWindowCount(scaledWidth / 0.14));
+  const windowColsSide = Math.max(2, increaseWindowCount(scaledDepth / 0.15));
   const yStep = windowRows > 1 ? (scaledHeight - 0.34) / (windowRows - 1) : 0;
   const zStepFront =
     windowColsFront > 1 ? (scaledWidth * 0.64) / (windowColsFront - 1) : 0;
@@ -530,6 +535,7 @@ export function RoomShell({ textures, worldHourRef }) {
       }),
     [],
   );
+  const frontWindowMaterialRef = useRef(frontWindowMaterial);
   const sideWindowMaterial = useMemo(
     () =>
       new MeshBasicMaterial({
@@ -543,6 +549,7 @@ export function RoomShell({ textures, worldHourRef }) {
       }),
     [],
   );
+  const sideWindowMaterialRef = useRef(sideWindowMaterial);
 
   useEffect(() => {
     return () => {
@@ -722,14 +729,18 @@ export function RoomShell({ textures, worldHourRef }) {
     frontWindowColorScratch
       .copy(frontWindowDayColor)
       .lerp(frontWindowNightColor, nightLightingStrength);
-    frontWindowMaterial.color.copy(frontWindowColorScratch);
-    frontWindowMaterial.opacity = 0.56 + nightLightingStrength * 0.36;
+    if (frontWindowMaterialRef.current) {
+      frontWindowMaterialRef.current.color.copy(frontWindowColorScratch);
+      frontWindowMaterialRef.current.opacity = 0.56 + nightLightingStrength * 0.36;
+    }
 
     sideWindowColorScratch
       .copy(sideWindowDayColor)
       .lerp(sideWindowNightColor, nightLightingStrength);
-    sideWindowMaterial.color.copy(sideWindowColorScratch);
-    sideWindowMaterial.opacity = 0.44 + nightLightingStrength * 0.42;
+    if (sideWindowMaterialRef.current) {
+      sideWindowMaterialRef.current.color.copy(sideWindowColorScratch);
+      sideWindowMaterialRef.current.opacity = 0.44 + nightLightingStrength * 0.42;
+    }
   });
 
   return (

@@ -44,6 +44,8 @@ app.use("/api/pomodoro", pomodoroRoutes);
 
 app.use(errorHandler);
 
-app.listen(PORT);
+app.listen(PORT, () => {
+  console.log(`FocusDesk backend running on http://localhost:${PORT}`);
+});
 
 module.exports = app;

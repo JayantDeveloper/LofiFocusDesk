@@ -9,8 +9,8 @@ function getAuthErrorMessage(mode, error) {
   return "Unable to log in right now.";
 }
 
-export function AuthModal() {
-  const { login, register, user } = useAuth();
+export function AuthModal({ onAuthed }) {
+  const { login, register, isAuthenticating } = useAuth();
   const [mode, setMode] = useState("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -30,12 +30,19 @@ export function AuthModal() {
       } else {
         await register(username, password);
       }
+      onAuthed?.();
     } catch (err) {
       setError(getAuthErrorMessage(mode, err));
     }
   };
 
-  if (user) return null;
+  const buttonState = isAuthenticating
+    ? mode === "login"
+      ? "Signing in..."
+      : "Creating account..."
+    : mode === "login"
+      ? "Log in"
+      : "Register";
 
   return (
     <div className="auth-modal-backdrop">
@@ -49,6 +56,8 @@ export function AuthModal() {
             <span>Username</span>
             <input
               value={username}
+              disabled={isAuthenticating}
+              autoComplete="username"
               onChange={(e) => {
                 setUsername(e.target.value);
                 if (error) setError(null);
@@ -62,6 +71,8 @@ export function AuthModal() {
             <input
               type="password"
               value={password}
+              disabled={isAuthenticating}
+              autoComplete="current-password"
               onChange={(e) => {
                 setPassword(e.target.value);
                 if (error) setError(null);
@@ -71,7 +82,10 @@ export function AuthModal() {
             />
           </label>
           {error && <div className="auth-error">{error}</div>}
-          <button type="submit" className="auth-submit">{mode === "login" ? "Log in" : "Register"}</button>
+        <button type="submit" className="auth-submit" disabled={isAuthenticating}>
+          {isAuthenticating ? <span className="auth-submit-spinner" aria-hidden="true" /> : null}
+          <span>{buttonState}</span>
+        </button>
         </form>
         <button type="button" className="auth-switch" onClick={toggleMode}>
           {mode === "login" ? "Need an account? Register" : "Have an account? Log in"}
