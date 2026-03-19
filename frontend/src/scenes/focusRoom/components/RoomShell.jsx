@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { memo, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import {
   AdditiveBlending,
@@ -210,7 +210,7 @@ const MIN_BUILDING_DEPTH = 0.48;
 const BUILDING_WINDOW_DENSITY_BOOST = 1.3;
 const FRONT_WINDOW_INSET = 0.0036;
 const SIDE_WINDOW_INSET = 0.0036;
-const SUN_RAY_LAYER_COUNT = 20;
+const MAX_SUN_RAY_LAYER_COUNT = 20;
 const SUN_RAY_RANDOM_SEED = 42891;
 const SUN_X = 0.46;
 const SUN_Z = 1.48;
@@ -233,10 +233,10 @@ function createSeededRandom(seed) {
   };
 }
 
-function createSunRayLayers() {
+function createSunRayLayers(layerCount = MAX_SUN_RAY_LAYER_COUNT) {
   const random = createSeededRandom(SUN_RAY_RANDOM_SEED);
-  return Array.from({ length: SUN_RAY_LAYER_COUNT }, (_, index) => {
-    const t = index / Math.max(1, SUN_RAY_LAYER_COUNT - 1);
+  return Array.from({ length: layerCount }, (_, index) => {
+    const t = index / Math.max(1, layerCount - 1);
     const inverseT = 1 - t;
     return {
       baseOpacity: (0.013 + inverseT * 0.01) * random(0.86, 1.14),
@@ -427,7 +427,7 @@ function CityBuilding({ building, frontWindowMaterial, sideWindowMaterial }) {
     <group position={[building.x, 0, building.z]}>
       <mesh castShadow receiveShadow position={[0, scaledHeight * 0.5, 0]}>
         <boxGeometry args={[scaledDepth, scaledHeight, scaledWidth]} />
-        <meshStandardMaterial color={building.color} roughness={0.88} />
+        <meshLambertMaterial color={building.color} />
         <group position={[0, -scaledHeight * 0.5, 0]}>
           <instancedMesh
             ref={frontWindowRef}
@@ -453,7 +453,7 @@ function CityBuilding({ building, frontWindowMaterial, sideWindowMaterial }) {
         <boxGeometry
           args={[scaledDepth * 0.72, building.roof, scaledWidth * 0.72]}
         />
-        <meshStandardMaterial color={building.accent} roughness={0.82} />
+        <meshLambertMaterial color={building.accent} />
       </mesh>
       {building.antenna ? (
         <mesh
@@ -465,18 +465,18 @@ function CityBuilding({ building, frontWindowMaterial, sideWindowMaterial }) {
           ]}
         >
           <cylinderGeometry args={[0.006, 0.006, building.antenna, 10]} />
-          <meshStandardMaterial
-            color="#b7bec8"
-            roughness={0.4}
-            metalness={0.7}
-          />
+          <meshLambertMaterial color="#b7bec8" />
         </mesh>
       ) : null}
     </group>
   );
 }
 
-export function RoomShell({ textures, worldHourRef }) {
+const RoomShellComponent = function RoomShell({
+  sceneQuality,
+  textures,
+  worldHourRef,
+}) {
   const skylineMaterialRef = useRef(null);
   const windowGlassMaterialRef = useRef(null);
   const skylineTargetColorRef = useRef(new Color());
@@ -513,15 +513,20 @@ export function RoomShell({ textures, worldHourRef }) {
   const sideWindowNightColor = useMemo(() => new Color("#ffcc52"), []);
   const frontWindowColorScratch = useMemo(() => new Color(), []);
   const sideWindowColorScratch = useMemo(() => new Color(), []);
+  const cloudsEnabled = (sceneQuality?.enableClouds ?? true) && SHOW_CLOUDS;
+  const skyBodiesEnabled = (sceneQuality?.enableSkyBodies ?? true) && SHOW_SKY_BODIES;
   const nearCloudTexture = useMemo(
-    () => (SHOW_CLOUDS ? createCloudTexture(55711) : null),
-    [],
+    () => (cloudsEnabled ? createCloudTexture(55711) : null),
+    [cloudsEnabled],
   );
   const farCloudTexture = useMemo(
-    () => (SHOW_CLOUDS ? createCloudTexture(83217) : null),
-    [],
+    () => (cloudsEnabled ? createCloudTexture(83217) : null),
+    [cloudsEnabled],
   );
-  const sunRayLayers = useMemo(() => createSunRayLayers(), []);
+  const sunRayLayers = useMemo(
+    () => createSunRayLayers(sceneQuality?.sunRayCount ?? MAX_SUN_RAY_LAYER_COUNT),
+    [sceneQuality?.sunRayCount],
+  );
   const frontWindowMaterial = useMemo(
     () =>
       new MeshBasicMaterial({
@@ -911,7 +916,7 @@ export function RoomShell({ textures, worldHourRef }) {
             map={textures.skyline}
           />
         </mesh>
-        {SHOW_CLOUDS && farCloudTexture ? (
+        {cloudsEnabled && farCloudTexture ? (
           <mesh
             position={[FAR_CLOUD_X, WINDOW_CENTER_Y + 0.76, -0.2]}
             rotation={[0, Math.PI / 2, 0]}
@@ -929,7 +934,7 @@ export function RoomShell({ textures, worldHourRef }) {
             />
           </mesh>
         ) : null}
-        {SHOW_CLOUDS && nearCloudTexture ? (
+        {cloudsEnabled && nearCloudTexture ? (
           <mesh
             position={[NEAR_CLOUD_X, WINDOW_CENTER_Y + 0.56, 0.1]}
             rotation={[0, Math.PI / 2, 0]}
@@ -949,7 +954,7 @@ export function RoomShell({ textures, worldHourRef }) {
         ) : null}
 
         <group position={[0, 0, OUTSIDE_CLUSTER_Z_SHIFT]}>
-          {SHOW_SKY_BODIES ? (
+          {skyBodiesEnabled ? (
             <>
               <mesh
                 ref={sunRef}
@@ -1094,4 +1099,6 @@ export function RoomShell({ textures, worldHourRef }) {
       </group>
     </group>
   );
-}
+};
+
+export const RoomShell = memo(RoomShellComponent);

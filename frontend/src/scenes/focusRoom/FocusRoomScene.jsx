@@ -265,6 +265,7 @@ export function FocusRoomScene({
   onToggleCalendarPopup,
   onToggleStatsPopup,
   onWorldClockDisplayChange,
+  sceneQuality,
   taskScore,
   onToggleMusic,
   onSelectMusicSlot,
@@ -516,12 +517,17 @@ export function FocusRoomScene({
         position={[-2.4, 3.8, 2.1]}
       />
 
-      <RoomShell textures={textures} worldHourRef={worldHourRef} />
+      <RoomShell
+        sceneQuality={sceneQuality}
+        textures={textures}
+        worldHourRef={worldHourRef}
+      />
       <Suspense fallback={null}>
         <DeskSetup
           clockAmpm={clockDisplay.ampm}
           clockTime={clockDisplay.time}
           isRadioOn={isMusicPlaying}
+          sceneQuality={sceneQuality}
           worldHourRef={worldHourRef}
         />
       </Suspense>
@@ -535,7 +541,7 @@ export function FocusRoomScene({
           textures={textures}
         />
       </Suspense>
-      <SceneCss3DRenderer enabled={isInteractable} />
+      <SceneCss3DRenderer enabled={isInteractable} sceneQuality={sceneQuality} />
       <RoomInteractionHotkeys
         onOpenCalendarPopup={onOpenCalendarPopup}
         onOpenStatsPopup={onOpenStatsPopup}

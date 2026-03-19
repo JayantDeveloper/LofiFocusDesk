@@ -24,7 +24,7 @@ function getLampTargetStrength(worldHour) {
   return Math.max(sunsetFadeIn, sunriseFadeOut);
 }
 
-export function DeskLamp({ isOn = false, worldHourRef }) {
+export function DeskLamp({ isOn = false, sceneQuality, worldHourRef }) {
   const neckCurve = useMemo(
     () =>
       new CatmullRomCurve3(
@@ -61,10 +61,8 @@ export function DeskLamp({ isOn = false, worldHourRef }) {
   const baseBulbColor = useMemo(() => new Color("#2a2a2a"), []);
   const litBulbColor = useMemo(() => new Color("#ffd39a"), []);
   const litBulbEmissive = useMemo(() => new Color("#ffbf7f"), []);
-  const initialLampStrength = useMemo(() => {
-    if (worldHourRef?.current != null) return getLampTargetStrength(worldHourRef.current);
-    return isOn ? 1 : 0;
-  }, [isOn, worldHourRef]);
+  const initialLampStrength = isOn ? 1 : 0;
+  const lampPointLightEnabled = sceneQuality?.enableLampPointLight ?? true;
   const lampStrengthRef = useRef(initialLampStrength);
   const bulbMaterialRef = useRef(null);
   const lampPointLightRef = useRef(null);
@@ -82,7 +80,7 @@ export function DeskLamp({ isOn = false, worldHourRef }) {
       bulbMaterialRef.current.emissiveIntensity = lampStrength * 0.95;
     }
     if (lampPointLightRef.current) {
-      lampPointLightRef.current.intensity = lampStrength * 1.15;
+      lampPointLightRef.current.intensity = lampPointLightEnabled ? lampStrength * 1.15 : 0;
     }
   });
 
@@ -199,6 +197,7 @@ export function DeskLamp({ isOn = false, worldHourRef }) {
         intensity={initialLampStrength * 1.15}
         position={[headPoint.x + shadeOffsetX - 0.03, headPoint.y + shadeOffsetY + 0.2, headPoint.z]}
         ref={lampPointLightRef}
+        visible={lampPointLightEnabled}
       />
 
       <mesh castShadow receiveShadow position={[-0.62, 0.06, 0]}>

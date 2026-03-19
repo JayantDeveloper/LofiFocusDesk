@@ -25,7 +25,7 @@ db.pragma("busy_timeout = 5000");
 db.exec(`
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  username TEXT UNIQUE NOT NULL,
+  username TEXT NOT NULL COLLATE NOCASE UNIQUE,
   password_hash TEXT NOT NULL,
   display_name TEXT DEFAULT '',
   calendar_embed TEXT DEFAULT '',
@@ -58,7 +58,6 @@ CREATE TABLE IF NOT EXISTS pomodoro_state (
 
 CREATE INDEX IF NOT EXISTS idx_tasks_user ON tasks(user_id, position, id);
 CREATE INDEX IF NOT EXISTS idx_tasks_user_done ON tasks(user_id, done);
-CREATE INDEX IF NOT EXISTS idx_users_username_nocase ON users(username COLLATE NOCASE);
 `);
 
 const userColumns = new Set(
@@ -75,6 +74,29 @@ if (!userColumns.has("radio_focus_slot")) {
 }
 if (!userColumns.has("radio_break_slot")) {
   db.exec("ALTER TABLE users ADD COLUMN radio_break_slot INTEGER DEFAULT 1");
+}
+
+const duplicateUsernameRows = db.prepare(`
+  SELECT lower(username) AS normalized_username, COUNT(*) AS duplicate_count
+  FROM users
+  GROUP BY lower(username)
+  HAVING COUNT(*) > 1
+`).all();
+
+if (duplicateUsernameRows.length === 0) {
+  db.exec(`
+    DROP INDEX IF EXISTS idx_users_username_nocase;
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_nocase_unique
+    ON users(username COLLATE NOCASE);
+  `);
+} else {
+  db.exec("CREATE INDEX IF NOT EXISTS idx_users_username_nocase ON users(username COLLATE NOCASE)");
+  const duplicateUsernames = duplicateUsernameRows
+    .map((row) => row.normalized_username)
+    .join(", ");
+  console.warn(
+    `[db] Skipping case-insensitive username uniqueness because duplicate usernames already exist: ${duplicateUsernames}`,
+  );
 }
 
 module.exports = db;

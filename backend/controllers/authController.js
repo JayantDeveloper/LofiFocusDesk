@@ -11,18 +11,22 @@ const {
   createUser,
   findUserById,
   findUserByUsername,
+  userExistsByUsername,
 } = require("../utils/repositories/userRepository");
 const { userJson } = require("../utils/userResponseUtils");
 
 const DEFAULT_BCRYPT_SALT_ROUNDS = 10;
 const USERNAME_MIN_LENGTH = 3;
 const PASSWORD_MIN_LENGTH = 8;
+const DUPLICATE_USERNAME_ERROR = "An account with this username already exists.";
 
 function getBcryptSaltRounds() {
   const configuredRounds = Number.parseInt(process.env.BCRYPT_SALT_ROUNDS || "", 10);
   if (!Number.isInteger(configuredRounds)) return DEFAULT_BCRYPT_SALT_ROUNDS;
   return Math.min(14, Math.max(8, configuredRounds));
 }
+
+const BCRYPT_SALT_ROUNDS = getBcryptSaltRounds();
 
 function signToken(userId, remember) {
   return jwt.sign({ sub: String(userId) }, JWT_SECRET, {
@@ -55,9 +59,14 @@ async function register(req, res) {
   }
 
   try {
+    if (userExistsByUsername(normalizedUsername)) {
+      res.status(409).json({ error: DUPLICATE_USERNAME_ERROR });
+      return;
+    }
+
     const user = createUser({
       username: normalizedUsername,
-      passwordHash: await bcrypt.hash(passwordString, getBcryptSaltRounds()),
+      passwordHash: await bcrypt.hash(passwordString, BCRYPT_SALT_ROUNDS),
     });
 
     if (!user) {
@@ -71,7 +80,7 @@ async function register(req, res) {
     res.status(201).json({ user: userJson(user) });
   } catch (error) {
     if (isDuplicateUserError(error)) {
-      res.status(409).json({ error: "An account with this username already exists." });
+      res.status(409).json({ error: DUPLICATE_USERNAME_ERROR });
       return;
     }
 

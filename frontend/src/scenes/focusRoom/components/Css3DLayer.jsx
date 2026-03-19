@@ -1,12 +1,34 @@
 import { useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { memo, useEffect, useMemo, useRef } from "react";
 import { createRoot } from "react-dom/client";
+import { Quaternion, Vector3 } from "three";
 import { CSS3DObject, CSS3DRenderer } from "three/examples/jsm/renderers/CSS3DRenderer.js";
 import { FocusTodoBoardApp } from "../todo-board/FocusTodoBoardApp";
 
-export function SceneCss3DRenderer({ enabled = true }) {
+export const SceneCss3DRenderer = memo(function SceneCss3DRenderer({
+  enabled = true,
+  sceneQuality,
+}) {
   const { camera, gl, scene, size } = useThree();
   const cssFrameAccumulatorRef = useRef(0);
+  const rendererRef = useRef(null);
+  const shouldRenderRef = useRef(true);
+  const lastCameraPositionRef = useRef(new Vector3());
+  const lastCameraQuaternionRef = useRef(new Quaternion());
+  const cssFps = sceneQuality?.cssFps ?? 18;
+
+  if (rendererRef.current === null) {
+    const renderer = new CSS3DRenderer();
+    const layer = renderer.domElement;
+    layer.className = "focus-room-css3d-layer";
+    layer.style.position = "absolute";
+    layer.style.inset = "0";
+    layer.style.pointerEvents = "auto";
+    layer.style.background = "transparent";
+    layer.style.backgroundColor = "transparent";
+    layer.style.zIndex = "40";
+    rendererRef.current = renderer;
+  }
 
   function enableInternalPointerEvents(layerElement) {
     const viewElement = layerElement.firstElementChild;
@@ -21,51 +43,61 @@ export function SceneCss3DRenderer({ enabled = true }) {
     }
   }
 
-  const renderer = useMemo(() => {
-    const r = new CSS3DRenderer();
-    const layer = r.domElement;
-    layer.className = "focus-room-css3d-layer";
-    layer.style.position = "absolute";
-    layer.style.inset = "0";
-    layer.style.pointerEvents = "auto";
-    layer.style.background = "transparent";
-    layer.style.backgroundColor = "transparent";
-    layer.style.zIndex = "40";
-    return r;
-  }, []);
-
   useEffect(() => {
+    const renderer = rendererRef.current;
     const parent = gl.domElement.parentElement;
-    if (!parent) return undefined;
+    if (!renderer || !parent) return undefined;
     parent.appendChild(renderer.domElement);
     enableInternalPointerEvents(renderer.domElement);
+    shouldRenderRef.current = true;
     return () => {
       if (renderer.domElement.parentElement === parent) {
         parent.removeChild(renderer.domElement);
       }
     };
-  }, [gl.domElement, renderer]);
+  }, [gl.domElement]);
 
   useEffect(() => {
+    const renderer = rendererRef.current;
+    if (!renderer) return undefined;
     renderer.setSize(size.width, size.height);
     enableInternalPointerEvents(renderer.domElement);
-  }, [renderer, size.height, size.width]);
+    shouldRenderRef.current = true;
+    return undefined;
+  }, [size.height, size.width]);
 
   useEffect(() => {
+    const renderer = rendererRef.current;
+    if (!renderer) return undefined;
     renderer.domElement.style.display = enabled ? "block" : "none";
     renderer.domElement.style.pointerEvents = enabled ? "auto" : "none";
-  }, [enabled, renderer]);
+    shouldRenderRef.current = true;
+    return undefined;
+  }, [enabled]);
 
   useFrame((_, delta) => {
-    if (!enabled) return;
+    const renderer = rendererRef.current;
+    if (!enabled || !renderer) return;
     cssFrameAccumulatorRef.current += delta;
-    if (cssFrameAccumulatorRef.current < 1 / 40) return;
+    if (cssFrameAccumulatorRef.current < 1 / Math.max(1, cssFps)) return;
+
+    const cameraMoved =
+      lastCameraPositionRef.current.distanceToSquared(camera.position) > 0.000001 ||
+      1 - Math.abs(lastCameraQuaternionRef.current.dot(camera.quaternion)) > 0.000001;
+
+    if (!shouldRenderRef.current && !cameraMoved) {
+      return;
+    }
+
     cssFrameAccumulatorRef.current = 0;
     renderer.render(scene, camera);
+    lastCameraPositionRef.current.copy(camera.position);
+    lastCameraQuaternionRef.current.copy(camera.quaternion);
+    shouldRenderRef.current = false;
   });
 
   return null;
-}
+});
 
 export function BoardCss3DObject({
   boardPomodoro,

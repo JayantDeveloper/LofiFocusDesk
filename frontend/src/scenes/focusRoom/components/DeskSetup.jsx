@@ -12,6 +12,7 @@ export function DeskSetup({
   clockAmpm,
   clockTime,
   isRadioOn,
+  sceneQuality,
   worldHourRef,
 }) {
   return (
@@ -21,7 +22,7 @@ export function DeskSetup({
       <Plant />
       <DeskRadio isOn={isRadioOn} />
       <PenCup />
-      <DeskLamp worldHourRef={worldHourRef} />
+      <DeskLamp sceneQuality={sceneQuality} worldHourRef={worldHourRef} />
       <AlarmClock ampm={clockAmpm} time={clockTime} />
       <StickyNoteStack position={[-0.62, DESK_TOP_Y + 0.04, -0.36]} rotation={[0, 0.24, 0]} />
 
