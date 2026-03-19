@@ -15,7 +15,7 @@ export const SceneCss3DRenderer = memo(function SceneCss3DRenderer({
   const shouldRenderRef = useRef(true);
   const lastCameraPositionRef = useRef(new Vector3());
   const lastCameraQuaternionRef = useRef(new Quaternion());
-  const cssFps = sceneQuality?.cssFps ?? 18;
+  const idleCssFps = sceneQuality?.cssFps ?? 18;
 
   if (rendererRef.current === null) {
     const renderer = new CSS3DRenderer();
@@ -78,12 +78,15 @@ export const SceneCss3DRenderer = memo(function SceneCss3DRenderer({
   useFrame((_, delta) => {
     const renderer = rendererRef.current;
     if (!enabled || !renderer) return;
-    cssFrameAccumulatorRef.current += delta;
-    if (cssFrameAccumulatorRef.current < 1 / Math.max(1, cssFps)) return;
 
     const cameraMoved =
       lastCameraPositionRef.current.distanceToSquared(camera.position) > 0.000001 ||
       1 - Math.abs(lastCameraQuaternionRef.current.dot(camera.quaternion)) > 0.000001;
+
+    cssFrameAccumulatorRef.current += delta;
+    if (!cameraMoved && cssFrameAccumulatorRef.current < 1 / Math.max(1, idleCssFps)) {
+      return;
+    }
 
     if (!shouldRenderRef.current && !cameraMoved) {
       return;
