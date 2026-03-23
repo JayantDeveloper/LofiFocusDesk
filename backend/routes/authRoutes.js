@@ -6,12 +6,13 @@ const {
   register,
 } = require("../controllers/authController");
 const { authOptional } = require("../middleware/authMiddleware");
+const { asyncHandler } = require("../middleware/asyncHandler");
 
 const router = express.Router();
 
-router.post("/register", register);
-router.post("/login", login);
+router.post("/register", asyncHandler(register));
+router.post("/login", asyncHandler(login));
 router.post("/logout", logout);
-router.get("/me", authOptional, getCurrentUser);
+router.get("/me", authOptional, asyncHandler(getCurrentUser));
 
 module.exports = router;

@@ -4,10 +4,11 @@ const {
   updatePomodoroState,
 } = require("../controllers/pomodoroController");
 const { authRequired } = require("../middleware/authMiddleware");
+const { asyncHandler } = require("../middleware/asyncHandler");
 
 const router = express.Router();
 
-router.get("/", authRequired, getPomodoroState);
-router.put("/", authRequired, updatePomodoroState);
+router.get("/", authRequired, asyncHandler(getPomodoroState));
+router.put("/", authRequired, asyncHandler(updatePomodoroState));
 
 module.exports = router;
