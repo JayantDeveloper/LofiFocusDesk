@@ -1,5 +1,5 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { Suspense, useEffect, useMemo, useRef } from "react";
 import { FocusRoomScene } from "./FocusRoomScene";
 import {
   detectFocusRoomQualityKey,
@@ -158,26 +158,28 @@ export default function FocusRoomExperience({
     >
       <SceneRenderLoop sceneQuality={sceneQuality} />
       <SceneReadySignal onSceneReady={onSceneReady} sceneSession={sceneSession} />
-      <FocusRoomScene
-        boardPomodoro={boardPomodoro}
-        boardTodo={boardTodo}
-        focusScore={focusScore}
-        hotkeysEnabled={hotkeysEnabled}
-        isCameraLocked={isCameraLocked}
-        isInteractable={isInteractable}
-        isMusicPlaying={isMusicPlaying}
-        onOpenBoardPopup={onOpenBoardPopup}
-        onOpenCalendarPopup={onOpenCalendarPopup}
-        onOpenStatsPopup={onOpenStatsPopup}
-        onSelectMusicSlot={onSelectMusicSlot}
-        onToggleBoardPopup={onToggleBoardPopup}
-        onToggleCalendarPopup={onToggleCalendarPopup}
-        onToggleMusic={onToggleMusic}
-        onToggleStatsPopup={onToggleStatsPopup}
-        onWorldClockDisplayChange={onWorldClockDisplayChange}
-        sceneQuality={sceneQuality}
-        taskScore={taskScore}
-      />
+      <Suspense fallback={null}>
+        <FocusRoomScene
+          boardPomodoro={boardPomodoro}
+          boardTodo={boardTodo}
+          focusScore={focusScore}
+          hotkeysEnabled={hotkeysEnabled}
+          isCameraLocked={isCameraLocked}
+          isInteractable={isInteractable}
+          isMusicPlaying={isMusicPlaying}
+          onOpenBoardPopup={onOpenBoardPopup}
+          onOpenCalendarPopup={onOpenCalendarPopup}
+          onOpenStatsPopup={onOpenStatsPopup}
+          onSelectMusicSlot={onSelectMusicSlot}
+          onToggleBoardPopup={onToggleBoardPopup}
+          onToggleCalendarPopup={onToggleCalendarPopup}
+          onToggleMusic={onToggleMusic}
+          onToggleStatsPopup={onToggleStatsPopup}
+          onWorldClockDisplayChange={onWorldClockDisplayChange}
+          sceneQuality={sceneQuality}
+          taskScore={taskScore}
+        />
+      </Suspense>
     </Canvas>
   );
 }
