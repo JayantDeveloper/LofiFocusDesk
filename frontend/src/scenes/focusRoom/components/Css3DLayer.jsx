@@ -12,7 +12,6 @@ export const SceneCss3DRenderer = memo(function SceneCss3DRenderer({
   const { camera, gl, scene, size } = useThree();
   const cssFrameAccumulatorRef = useRef(0);
   const rendererRef = useRef(null);
-  const shouldRenderRef = useRef(true);
   const lastCameraPositionRef = useRef(new Vector3());
   const lastCameraQuaternionRef = useRef(new Quaternion());
   const idleCssFps = sceneQuality?.cssFps ?? 18;
@@ -50,7 +49,7 @@ export const SceneCss3DRenderer = memo(function SceneCss3DRenderer({
     if (!renderer || !parent) return undefined;
     parent.appendChild(renderer.domElement);
     enableInternalPointerEvents(renderer.domElement);
-    shouldRenderRef.current = true;
+    cssFrameAccumulatorRef.current = 1; // force render on next frame
     return () => {
       if (renderer.domElement.parentElement === parent) {
         parent.removeChild(renderer.domElement);
@@ -63,7 +62,7 @@ export const SceneCss3DRenderer = memo(function SceneCss3DRenderer({
     if (!renderer) return undefined;
     renderer.setSize(size.width, size.height);
     enableInternalPointerEvents(renderer.domElement);
-    shouldRenderRef.current = true;
+    cssFrameAccumulatorRef.current = 1; // force render on next frame
     return undefined;
   }, [size.height, size.width]);
 
@@ -71,7 +70,6 @@ export const SceneCss3DRenderer = memo(function SceneCss3DRenderer({
     const renderer = rendererRef.current;
     if (!renderer) return undefined;
     renderer.domElement.style.pointerEvents = enabled ? "auto" : "none";
-    shouldRenderRef.current = true;
     return undefined;
   }, [enabled]);
 
@@ -88,15 +86,10 @@ export const SceneCss3DRenderer = memo(function SceneCss3DRenderer({
       return;
     }
 
-    if (!shouldRenderRef.current && !cameraMoved) {
-      return;
-    }
-
     cssFrameAccumulatorRef.current = 0;
     renderer.render(scene, camera);
     lastCameraPositionRef.current.copy(camera.position);
     lastCameraQuaternionRef.current.copy(camera.quaternion);
-    shouldRenderRef.current = false;
   });
 
   return null;
