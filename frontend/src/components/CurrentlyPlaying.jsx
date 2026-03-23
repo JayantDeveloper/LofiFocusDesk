@@ -2,14 +2,15 @@ import "./CurrentlyPlaying.css";
 
 function PlayIcon() {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
       <polygon points="6 3 20 12 6 21 6 3" />
     </svg>
   );
 }
+
 function PauseIcon() {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
       <rect x="6" y="4" width="4" height="16" />
       <rect x="14" y="4" width="4" height="16" />
     </svg>
@@ -23,19 +24,16 @@ export default function CurrentlyPlaying({
   onTogglePlay = undefined,
 }) {
   return (
-    <div className="player-card">
-      <div className="label-row">
-        <span className="label-text">Currently Playing</span>
-      </div>
-      <div className="track-meta">
-        <div className="track-title">{title}</div>
-        <div className="track-artist">{artist}</div>
-      </div>
-      <div className="track-controls">
-        <button className="play-btn" onClick={onTogglePlay} type="button">
-          {playing ? <PauseIcon /> : <PlayIcon />}
-        </button>
-      </div>
+    <div className="player-pill">
+      <span className={`player-dot${playing ? " playing" : ""}`} />
+      <span className="player-track">
+        <span className="player-title">{title}</span>
+        <span className="player-divider">·</span>
+        <span className="player-artist">{artist}</span>
+      </span>
+      <button className="player-btn" onClick={onTogglePlay} type="button" aria-label={playing ? "Pause" : "Play"}>
+        {playing ? <PauseIcon /> : <PlayIcon />}
+      </button>
     </div>
   );
 }

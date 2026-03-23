@@ -12,6 +12,8 @@
   cursor: pointer;
   /* Keep below welcome overlay (z-index 9999) */
   z-index: 8000;
-  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .settings-gear:hover { background: rgba(30,41,59,0.9); }

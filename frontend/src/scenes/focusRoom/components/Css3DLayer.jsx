@@ -45,7 +45,8 @@ export const SceneCss3DRenderer = memo(function SceneCss3DRenderer({
 
   useEffect(() => {
     const renderer = rendererRef.current;
-    const parent = gl.domElement.parentElement;
+    const parent =
+      gl.domElement.closest(".focus-room-app") || gl.domElement.parentElement;
     if (!renderer || !parent) return undefined;
     parent.appendChild(renderer.domElement);
     enableInternalPointerEvents(renderer.domElement);
@@ -69,7 +70,6 @@ export const SceneCss3DRenderer = memo(function SceneCss3DRenderer({
   useEffect(() => {
     const renderer = rendererRef.current;
     if (!renderer) return undefined;
-    renderer.domElement.style.display = enabled ? "block" : "none";
     renderer.domElement.style.pointerEvents = enabled ? "auto" : "none";
     shouldRenderRef.current = true;
     return undefined;
@@ -77,7 +77,7 @@ export const SceneCss3DRenderer = memo(function SceneCss3DRenderer({
 
   useFrame((_, delta) => {
     const renderer = rendererRef.current;
-    if (!enabled || !renderer) return;
+    if (!renderer) return;
 
     const cameraMoved =
       lastCameraPositionRef.current.distanceToSquared(camera.position) > 0.000001 ||
@@ -118,7 +118,6 @@ export function BoardCss3DObject({
     el.style.width = `${widthPx}px`;
     el.style.height = `${heightPx}px`;
     el.style.pointerEvents = "auto";
-    el.style.touchAction = "none";
     return el;
   }, [className, heightPx, widthPx]);
 

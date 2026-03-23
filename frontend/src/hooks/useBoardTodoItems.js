@@ -1,14 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { TODO_DIFFICULTY_OPTIONS } from "../constants/todoBoardConstants";
+import { TODO_DIFFICULTY_OPTIONS, TODO_STATUS_OPTIONS } from "../constants/todoBoardConstants";
 import { useAuth } from "../store/AuthStore";
 import { apiRequest } from "../utils/apiClient";
 
-const EDITABLE_FIELDS = new Set(["title", "difficulty", "done"]);
+const EDITABLE_FIELDS = new Set(["title", "difficulty", "status"]);
 const TASK_SCORE_STORAGE_PREFIX = "focusdesk.task-score";
 const OPTIMISTIC_TASK_PREFIX = "optimistic-task-";
 
 function normalizeDifficulty(value) {
   return TODO_DIFFICULTY_OPTIONS.includes(value) ? value : "Easy";
+}
+
+function normalizeStatus(value) {
+  return TODO_STATUS_OPTIONS.includes(value) ? value : "Not Started";
 }
 
 function normalizeItem(item) {
@@ -19,8 +23,8 @@ function normalizeItem(item) {
     id,
     title,
     difficulty: normalizeDifficulty(item.difficulty),
-    done: item.done === true,
     position: Number.isFinite(item.position) ? item.position : 0,
+    status: normalizeStatus(item.status),
   };
 }
 
@@ -98,7 +102,9 @@ export function useBoardTodoItems() {
         try {
           const data = await apiRequest("/api/tasks");
           if (!isMounted) return;
-          const normalizedItems = (data.tasks || []).map(normalizeItem).filter(Boolean);
+          const normalizedItems = (data.tasks || [])
+            .map(normalizeItem)
+            .filter((item) => item && item.status !== "Done");
           setItems(normalizedItems);
           const visibleTaskCount = normalizedItems.length;
           const snapshot = readTaskScoreSnapshot(taskScoreStorageKey);
@@ -168,6 +174,21 @@ export function useBoardTodoItems() {
     async (idToUpdate, fieldName, value) => {
       if (!EDITABLE_FIELDS.has(fieldName)) return;
       if (!user) return;
+
+      // Marking a task Done auto-removes it and counts toward the score.
+      if (fieldName === "status" && value === "Done") {
+        setItems((prev) => prev.filter((item) => item.id !== idToUpdate));
+        setDoneDeletedTasks((prev) => prev + 1);
+        if (!isOptimisticTaskId(idToUpdate)) {
+          try {
+            await apiRequest(`/api/tasks/${idToUpdate}`, { method: "DELETE" });
+          } catch {
+            // Keep removed from UI even if the delete request fails.
+          }
+        }
+        return;
+      }
+
       setItems((prevItems) =>
         prevItems.map((item) =>
           item.id === idToUpdate
@@ -176,9 +197,7 @@ export function useBoardTodoItems() {
                 [fieldName]:
                   fieldName === "difficulty"
                     ? normalizeDifficulty(value)
-                    : fieldName === "done"
-                      ? value === true
-                      : String(value),
+                    : String(value),
               }
             : item,
         ),
@@ -204,8 +223,8 @@ export function useBoardTodoItems() {
       id: optimisticId,
       title: "",
       difficulty: "Easy",
-      done: false,
       position: items.length + 1,
+      status: "Not Started",
     };
 
     setItems((prev) => [...prev, optimisticItem]);
@@ -213,7 +232,7 @@ export function useBoardTodoItems() {
     try {
       const data = await apiRequest("/api/tasks", {
         method: "POST",
-        body: { title: "", difficulty: "Easy", done: false },
+        body: { title: "", difficulty: "Easy", status: "Not Started" },
       });
       const persistedItem = normalizeItem(data.task);
       if (!persistedItem) throw new Error("Failed to normalize created task");
@@ -229,28 +248,6 @@ export function useBoardTodoItems() {
       setTotalCreatedTasks((prev) => Math.max(0, prev - 1));
     }
   }, [items.length, user]);
-
-  const removeDoneItems = useCallback(async () => {
-    if (!user) return;
-    const doneItems = items.filter((item) => item.done);
-    if (doneItems.length === 0) return;
-
-    setItems((prev) => prev.filter((item) => !item.done));
-    setDoneDeletedTasks((prev) => prev + doneItems.length);
-
-    const persistedDoneItems = doneItems.filter((item) => !isOptimisticTaskId(item.id));
-    if (persistedDoneItems.length === 0) return;
-
-    const deletionResults = await Promise.allSettled(
-      persistedDoneItems.map((item) => apiRequest(`/api/tasks/${item.id}`, { method: "DELETE" })),
-    );
-    const failedItems = persistedDoneItems.filter((_, index) => deletionResults[index].status === "rejected");
-    if (failedItems.length === 0) return;
-
-    // Keep completed items removed from the UI even if a delete request fails.
-    // This avoids tasks popping back into the board after the user clicks Done.
-    setDoneDeletedTasks((prev) => Math.max(0, prev - failedItems.length));
-  }, [items, user]);
 
   const handleDragStart = useCallback((id) => {
     setDraggedItemId(id);
@@ -309,7 +306,6 @@ export function useBoardTodoItems() {
       isHydrating,
       isReady: !isHydrating,
       items,
-      removeDoneItems,
       resetTaskScore,
       updateItem,
       doneDeletedTasks,
@@ -326,7 +322,6 @@ export function useBoardTodoItems() {
       handleDrop,
       isHydrating,
       items,
-      removeDoneItems,
       resetTaskScore,
       totalCreatedTasks,
       updateItem,

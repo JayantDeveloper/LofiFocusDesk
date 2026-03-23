@@ -14,14 +14,14 @@ function parsePomodoroData(row) {
   }
 }
 
-function getPomodoroState(req, res) {
-  const row = getPomodoroStateByUserId(req.userId);
+async function getPomodoroState(req, res) {
+  const row = await getPomodoroStateByUserId(req.userId);
   res.json({ state: parsePomodoroData(row) });
 }
 
-function updatePomodoroState(req, res) {
+async function updatePomodoroState(req, res) {
   const payload = req.body || {};
-  upsertPomodoroState(req.userId, JSON.stringify(payload));
+  await upsertPomodoroState(req.userId, JSON.stringify(payload));
   res.json({ state: payload });
 }
 

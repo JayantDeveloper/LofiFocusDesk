@@ -1,4 +1,4 @@
-const { TODO_DIFFICULTY_OPTIONS } = require("../constants/taskConstants");
+const { TODO_DIFFICULTY_OPTIONS, TODO_STATUS_OPTIONS } = require("../constants/taskConstants");
 const {
   createTask,
   deleteTaskForUser,
@@ -7,24 +7,28 @@ const {
   updateTaskForUser,
 } = require("../utils/repositories/taskRepository");
 
-function getTasks(req, res) {
-  const tasks = listTasks(req.userId);
+async function getTasks(req, res) {
+  const tasks = await listTasks(req.userId);
   res.json({ tasks });
 }
 
-function createTaskHandler(req, res) {
-  const title = String(req.body?.title || "").trim();
-  const difficulty = TODO_DIFFICULTY_OPTIONS.includes(req.body?.difficulty)
-    ? req.body.difficulty
+async function createTaskHandler(req, res) {
+  const body = req.body || {};
+  const title = String(body.title || "").trim();
+  const difficulty = TODO_DIFFICULTY_OPTIONS.includes(body.difficulty)
+    ? body.difficulty
     : TODO_DIFFICULTY_OPTIONS[0];
-  const done = req.body?.done === true ? 1 : 0;
+  const status = TODO_STATUS_OPTIONS.includes(body.status) ? body.status : "Not Started";
+  const dueDate = typeof body.dueDate === "string" ? body.dueDate : "";
+  const notes = typeof body.notes === "string" ? body.notes : "";
+  const done = body.done === true ? 1 : 0;
 
-  const task = createTask(req.userId, { title, difficulty, done });
+  const task = await createTask(req.userId, { title, difficulty, status, dueDate, notes, done });
   res.status(201).json({ task });
 }
 
-function updateTaskHandler(req, res) {
-  const task = findTaskForUser(req.params.id, req.userId);
+async function updateTaskHandler(req, res) {
+  const task = await findTaskForUser(req.params.id, req.userId);
 
   if (!task) {
     res.status(404).json({ error: "Not found" });
@@ -32,44 +36,43 @@ function updateTaskHandler(req, res) {
   }
 
   const body = req.body || {};
+  const has = (key) => Object.prototype.hasOwnProperty.call(body, key);
 
-  const title = Object.prototype.hasOwnProperty.call(body, "title")
-    ? String(body.title || "").trim()
-    : task.title;
+  const title = has("title") ? String(body.title || "").trim() : task.title;
 
-  const difficulty = Object.prototype.hasOwnProperty.call(body, "difficulty")
-    && TODO_DIFFICULTY_OPTIONS.includes(body.difficulty)
+  const difficulty = has("difficulty") && TODO_DIFFICULTY_OPTIONS.includes(body.difficulty)
     ? body.difficulty
     : task.difficulty;
 
-  const done = Object.prototype.hasOwnProperty.call(body, "done")
-    ? (body.done ? 1 : 0)
-    : task.done;
+  const status = has("status") && TODO_STATUS_OPTIONS.includes(body.status)
+    ? body.status
+    : (task.status ?? "Not Started");
 
-  const position = Object.prototype.hasOwnProperty.call(body, "position")
-    && Number.isInteger(body.position)
+  const dueDate = has("dueDate") ? String(body.dueDate ?? "") : (task.due_date ?? "");
+  const notes = has("notes") ? String(body.notes ?? "") : (task.notes ?? "");
+
+  const done = has("done") ? (body.done ? 1 : 0) : task.done;
+
+  const position = has("position") && Number.isInteger(body.position)
     ? body.position
     : task.position;
 
-  const updatedTask = updateTaskForUser(task.id, req.userId, {
-    title,
-    difficulty,
-    done,
-    position,
+  const updatedTask = await updateTaskForUser(task.id, req.userId, {
+    title, difficulty, status, dueDate, notes, done, position,
   });
 
   res.json({ task: updatedTask });
 }
 
-function deleteTaskHandler(req, res) {
-  const task = findTaskForUser(req.params.id, req.userId);
+async function deleteTaskHandler(req, res) {
+  const task = await findTaskForUser(req.params.id, req.userId);
 
   if (!task) {
     res.status(404).json({ error: "Not found" });
     return;
   }
 
-  deleteTaskForUser(task.id, req.userId);
+  await deleteTaskForUser(task.id, req.userId);
   res.json({ ok: true });
 }
 

@@ -14,9 +14,9 @@ const {
 } = require("../utils/repositories/userRepository");
 const { userJson } = require("../utils/userResponseUtils");
 
-function getUserProfile(req, res) {
+async function getUserProfile(req, res) {
   try {
-    const user = findUserById(req.userId);
+    const user = await findUserById(req.userId);
 
     if (!user) {
       res.status(404).json({ error: "Not found" });
@@ -30,7 +30,7 @@ function getUserProfile(req, res) {
   }
 }
 
-function updateUserProfileHandler(req, res) {
+async function updateUserProfileHandler(req, res) {
   try {
     const body = req.body || {};
 
@@ -57,7 +57,7 @@ function updateUserProfileHandler(req, res) {
       ? normalizeMusicSlot(body.radio_break_slot, DEFAULT_RADIO_BREAK_SLOT)
       : null;
 
-    const updatedUser = updateUserProfile(req.userId, {
+    const updatedUser = await updateUserProfile(req.userId, {
       displayName,
       calendarEmbed,
       musicUrls: musicUrls ? serializeMusicUrls(musicUrls) : null,

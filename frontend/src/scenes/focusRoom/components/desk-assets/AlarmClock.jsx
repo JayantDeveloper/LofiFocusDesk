@@ -3,7 +3,7 @@ import { CanvasTexture } from "three";
 import { DESK_TOP_Y } from "../../../../constants/deskConstants";
 
 const LAMP_X = -0.9;
-const LAMP_Z = -0.4;
+const LAMP_Z = -0.30;
 const DESK_WIDTH = 2.35;
 const CLOCK_LAMP_GAP = DESK_WIDTH * 0.1;
 

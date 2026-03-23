@@ -1,13 +1,13 @@
 .focus-board-screen-shell {
-  width: 560px;
-  height: 355px;
+  width: 968px;
+  height: 444px;
   overflow: hidden;
   border-radius: 10px;
   border: 1px solid rgba(98, 72, 48, 0.36);
-  background: #f8f3ea;
+  background: #191919;
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.52),
-    0 8px 26px rgba(22, 14, 8, 0.18);
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 8px 26px rgba(0, 0, 0, 0.4);
 }
 
 .focus-board-screen-shell.laptop-screen {
@@ -32,17 +32,16 @@
   --orange: #fd8a6b;
   --amber: #fec288;
   --yellow: #fbef76;
-  --done-green: #7ea66a;
-  --bg: #fffdf7;
-  --surface: #fff8ee;
-  --border: #f2dcc0;
-  --ink: #3a1a0a;
-  --ink-muted: #b48562;
+  --bg: #191919;
+  --surface: #202020;
+  --border: #2e2e2e;
+  --ink: #e8e8e6;
+  --ink-muted: #6b6b65;
 
   width: 100%;
   height: 100%;
   display: grid;
-  grid-template-columns: 1.36fr 1fr;
+  grid-template-columns: 3fr 1fr;
   background: var(--bg);
   color: var(--ink);
   font-family: "Avenir Next", "Segoe UI", sans-serif;
@@ -53,14 +52,13 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 15px 14px 12px;
+  padding: 12px 12px 10px;
 }
 
 .focus-board-navbar {
-  margin: 0 auto 9px;
-  width: 96%;
-  border-radius: 10px;
-  padding: 10px 12px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  padding: 8px 12px;
   text-align: center;
   background: linear-gradient(
     135deg,
@@ -69,12 +67,12 @@
     var(--amber) 78%,
     var(--yellow) 100%
   );
-  box-shadow: 0 6px 18px rgba(250, 92, 92, 0.22);
+  box-shadow: 0 4px 14px rgba(250, 92, 92, 0.25);
 }
 
 .focus-board-navbar h1 {
   margin: 0;
-  font-size: 30px;
+  font-size: 22px;
   color: #fff;
   letter-spacing: 0.01em;
 }
@@ -83,159 +81,222 @@
   flex: 1;
   display: grid;
   align-content: start;
-  gap: 6px;
+  gap: 4px;
   min-height: 0;
   overflow-y: auto;
   padding-right: 2px;
 }
 
+.focus-board-items-section::-webkit-scrollbar {
+  width: 3px;
+}
+.focus-board-items-section::-webkit-scrollbar-track {
+  background: transparent;
+}
+.focus-board-items-section::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+
 .focus-board-empty-state {
   margin: 10px auto 0;
   color: var(--ink-muted);
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .focus-board-item {
   width: 100%;
-  min-height: 47px;
   border: 1px solid var(--border);
-  border-radius: 9px;
+  border-radius: 6px;
   background: var(--surface);
   overflow: hidden;
-  box-shadow:
-    0 1px 3px rgba(58, 26, 10, 0.05),
-    inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 .focus-board-item.dragging {
-  opacity: 0.65;
+  opacity: 0.5;
   border-style: dashed;
 }
 
-.focus-board-item-fields-row {
-  display: flex;
-  gap: 6px;
+/* ── Table header + item row grid ───────────────────────────── */
+.focus-board-table-header,
+.focus-board-item-row {
+  display: grid;
+  grid-template-columns: 1fr 82px 78px 46px 36px;
   align-items: center;
-  padding: 7px 9px;
+  gap: 4px;
+  padding: 0 8px;
 }
 
-.focus-board-item-fields-row input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  flex: 0 0 auto;
-  accent-color: var(--done-green);
+.focus-board-table-header {
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 5px;
+  margin-bottom: 3px;
 }
 
-.focus-board-item-title-input,
-.focus-board-item-difficulty-input {
+.focus-board-item-row {
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+/* ── Task title input ───────────────────────────────────────── */
+.focus-board-item-title-input {
   margin: 0;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 5px 8px;
-  height: 31px;
-  background: var(--bg);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 3px 6px;
+  height: 26px;
+  background: transparent;
   color: var(--ink);
   font: inherit;
-  font-size: 12px;
-}
-
-.focus-board-item-title-input {
-  flex: 1 1 0;
+  font-size: 11px;
+  font-weight: 500;
+  width: 100%;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.focus-board-item-difficulty-input {
-  flex: 0 0 92px;
+.focus-board-item-title-input.expanded {
+  height: auto;
+  min-height: 26px;
+  white-space: normal;
+  overflow: visible;
+  word-break: break-word;
 }
 
-.focus-board-item-title-input:focus,
-.focus-board-item-difficulty-input:focus {
+.focus-board-item-title-input:focus {
   outline: none;
-  border-color: var(--orange);
-  box-shadow: 0 0 0 2px rgba(253, 138, 107, 0.22);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+  background: rgba(59, 130, 246, 0.05);
 }
 
+/* ── Pill selects (status + difficulty) ─────────────────────── */
+.focus-board-item-status-select,
+.focus-board-item-difficulty-input {
+  font: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  border: none;
+  border-radius: 4px;
+  padding: 2px 4px;
+  height: 22px;
+  width: 100%;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  text-align: center;
+}
+
+.focus-board-item-status-select:focus,
+.focus-board-item-difficulty-input:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 1px;
+}
+
+/* Status pill colors */
+.focus-board-item-status-select[data-status="Not Started"] {
+  background: #2a2a2a;
+  color: #888882;
+}
+.focus-board-item-status-select[data-status="In Progress"] {
+  background: #1c3050;
+  color: #5b9bd5;
+}
+.focus-board-item-status-select[data-status="Done"] {
+  background: #1a3320;
+  color: #58a65c;
+}
+
+/* Difficulty pill colors */
+.focus-board-item-difficulty-input[data-difficulty="Easy"] {
+  background: #1c2e48;
+  color: #5b9bd5;
+}
+.focus-board-item-difficulty-input[data-difficulty="Medium"] {
+  background: #3a2e06;
+  color: #c9920c;
+}
+.focus-board-item-difficulty-input[data-difficulty="Hard"] {
+  background: #3a1e06;
+  color: #d97530;
+}
+.focus-board-item-difficulty-input[data-difficulty="Very Hard"] {
+  background: #3a0a0a;
+  color: #c94040;
+}
+
+/* ── XP badge ───────────────────────────────────────────────── */
+.focus-board-xp-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: #c9920c;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* ── Delete button ──────────────────────────────────────────── */
 .focus-board-delete-button {
   flex: 0 0 auto;
-  height: 31px;
-  min-width: 42px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
   background: transparent;
-  color: #b45b51;
-  font-size: 11px;
+  color: #6b6b65;
+  font-size: 10px;
   font-weight: 800;
-  letter-spacing: 0.04em;
   cursor: pointer;
+  padding: 0;
 }
 
 .focus-board-delete-button:hover {
-  border-color: var(--red);
+  border-color: #fa5c5c;
   background: rgba(250, 92, 92, 0.12);
+  color: #fa5c5c;
 }
 
+/* ── Action row ─────────────────────────────────────────────── */
 .focus-board-action-row {
   display: flex;
-  gap: 8px;
-  margin-top: 10px;
+  gap: 7px;
+  margin-top: 8px;
 }
 
-.focus-board-done-button,
 .focus-board-add-button {
   flex: 1;
-  border-radius: 8px;
-  padding: 9px 10px;
+  border-radius: 6px;
+  padding: 7px 10px;
   font: inherit;
-  font-size: 11px;
+  font-size: 10px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
-}
-
-.focus-board-done-button {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  border: 1.5px solid var(--done-green);
-  background: color-mix(in srgb, var(--done-green) 15%, white);
-  color: color-mix(in srgb, var(--done-green) 80%, black);
-}
-
-.focus-board-done-count {
-  font-size: 9px;
-  letter-spacing: 0.01em;
-  text-transform: none;
-  line-height: 1.2;
-}
-
-.focus-board-done-button:hover {
-  background: var(--done-green);
-  color: #fff;
-}
-
-.focus-board-add-button {
-  border: 1.5px solid var(--amber);
-  background: rgba(254, 194, 136, 0.16);
-  color: #a05a10;
+  border: 1px solid #3a2e06;
+  background: rgba(201, 146, 12, 0.1);
+  color: #c9920c;
 }
 
 .focus-board-add-button:hover {
-  background: var(--amber);
-  color: var(--ink);
+  background: rgba(201, 146, 12, 0.2);
 }
 
+/* ── Footer ─────────────────────────────────────────────────── */
 .focus-board-footer {
-  margin-top: 8px;
+  margin-top: 6px;
   text-align: center;
   color: var(--ink-muted);
-  font-size: 11px;
+  font-size: 10px;
 }
 
+/* ── Right pane / pomodoro ──────────────────────────────────── */
 .focus-board-right-pane {
   min-height: 0;
   border-left: 1px solid var(--border);
-  background: #fff4e6;
+  background: #141414;
 }
 
 .focus-board-pomodoro {
@@ -245,8 +306,8 @@
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 17px;
-  padding: 18px 10px;
+  gap: 14px;
+  padding: 16px 8px;
   position: relative;
   color: #fff;
 }
@@ -261,23 +322,24 @@
 
 .focus-board-pomodoro-modes {
   display: flex;
-  gap: 4px;
-  background: rgba(0, 0, 0, 0.2);
-  padding: 4px;
+  gap: 3px;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 3px;
   border-radius: 999px;
 }
 
 .focus-board-mode-button {
   border: none;
   border-radius: 999px;
-  padding: 6px 12px;
+  padding: 5px 10px;
   background: transparent;
-  color: rgba(255, 255, 255, 0.68);
+  color: rgba(255, 255, 255, 0.6);
   cursor: pointer;
   font: inherit;
-  font-size: 10px;
+  font-size: 9px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .focus-board-mode-button.active {
@@ -286,7 +348,7 @@
 }
 
 .focus-board-pomodoro-time {
-  font-size: 58px;
+  font-size: 52px;
   line-height: 1;
   letter-spacing: 0.03em;
   font-weight: 800;
@@ -296,20 +358,21 @@
 
 .focus-board-pomodoro-controls {
   display: flex;
-  gap: 8px;
+  gap: 6px;
 }
 
 .focus-board-pomodoro-button {
   border: none;
-  border-radius: 8px;
-  padding: 9px 14px;
+  border-radius: 7px;
+  padding: 7px 12px;
   background: rgba(255, 255, 255, 0.17);
   color: #fff;
   cursor: pointer;
   font: inherit;
-  font-size: 10px;
+  font-size: 9px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .focus-board-pomodoro-button:hover {

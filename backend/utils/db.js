@@ -1,102 +1,85 @@
-const fs = require("fs");
 const path = require("path");
 const dotenv = require("dotenv");
-const Database = require("better-sqlite3");
+const { Pool } = require("pg");
 
 dotenv.config({ path: path.join(__dirname, "..", ".env") });
 dotenv.config({ path: path.join(__dirname, "..", ".env.local"), override: true });
 
-const configuredDbPath = (process.env.SQLITE_DB_PATH || "").trim();
-const dbPath = configuredDbPath
-  ? (path.isAbsolute(configuredDbPath) ? configuredDbPath : path.join(__dirname, "..", configuredDbPath))
-  : path.join(__dirname, "..", "instance", "focusdesk.db");
-const dbDir = path.dirname(dbPath);
-fs.mkdirSync(dbDir, { recursive: true });
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL && process.env.DATABASE_URL.includes("sslmode=require")
+    ? { rejectUnauthorized: false }
+    : false,
+  max: 5,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000,
+});
 
-const db = new Database(dbPath);
-db.pragma("journal_mode = WAL");
-db.pragma("foreign_keys = ON");
-db.pragma("synchronous = NORMAL");
-db.pragma("temp_store = MEMORY");
-db.pragma("cache_size = -20000");
-db.pragma("busy_timeout = 5000");
+pool.on("error", (err) => {
+  console.error("[db] Unexpected pool error:", err.message);
+});
 
-// Schema bootstrap (idempotent)
-db.exec(`
-CREATE TABLE IF NOT EXISTS users (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  username TEXT NOT NULL COLLATE NOCASE UNIQUE,
-  password_hash TEXT NOT NULL,
-  display_name TEXT DEFAULT '',
-  calendar_embed TEXT DEFAULT '',
-  music_urls TEXT DEFAULT '[]',
-  radio_sync_enabled INTEGER DEFAULT 0,
-  radio_focus_slot INTEGER DEFAULT 0,
-  radio_break_slot INTEGER DEFAULT 1,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
+async function bootstrap() {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username TEXT NOT NULL,
+        password_hash TEXT NOT NULL,
+        display_name TEXT DEFAULT '',
+        calendar_embed TEXT DEFAULT '',
+        music_urls TEXT DEFAULT '[]',
+        radio_sync_enabled INTEGER DEFAULT 0,
+        radio_focus_slot INTEGER DEFAULT 0,
+        radio_break_slot INTEGER DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
-CREATE TABLE IF NOT EXISTS tasks (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL,
-  title TEXT DEFAULT '',
-  difficulty TEXT DEFAULT 'Easy' CHECK (difficulty IN ('Easy','Medium','Hard')),
-  done INTEGER DEFAULT 0,
-  position INTEGER DEFAULT 0,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
+    await client.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_lower
+        ON users (LOWER(username))
+    `);
 
-CREATE TABLE IF NOT EXISTS pomodoro_state (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL UNIQUE,
-  data TEXT NOT NULL DEFAULT '{}',
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS tasks (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title TEXT DEFAULT '',
+        difficulty TEXT DEFAULT 'Easy',
+        status TEXT DEFAULT 'Not Started',
+        due_date TEXT DEFAULT '',
+        notes TEXT DEFAULT '',
+        done INTEGER DEFAULT 0,
+        position INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
-CREATE INDEX IF NOT EXISTS idx_tasks_user ON tasks(user_id, position, id);
-CREATE INDEX IF NOT EXISTS idx_tasks_user_done ON tasks(user_id, done);
-`);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_tasks_user ON tasks(user_id, position, id)
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_tasks_user_done ON tasks(user_id, done)
+    `);
 
-const userColumns = new Set(
-  db.prepare("PRAGMA table_info(users)").all().map((column) => column.name),
-);
-if (!userColumns.has("music_urls")) {
-  db.exec("ALTER TABLE users ADD COLUMN music_urls TEXT DEFAULT '[]'");
-}
-if (!userColumns.has("radio_sync_enabled")) {
-  db.exec("ALTER TABLE users ADD COLUMN radio_sync_enabled INTEGER DEFAULT 0");
-}
-if (!userColumns.has("radio_focus_slot")) {
-  db.exec("ALTER TABLE users ADD COLUMN radio_focus_slot INTEGER DEFAULT 0");
-}
-if (!userColumns.has("radio_break_slot")) {
-  db.exec("ALTER TABLE users ADD COLUMN radio_break_slot INTEGER DEFAULT 1");
-}
-
-const duplicateUsernameRows = db.prepare(`
-  SELECT lower(username) AS normalized_username, COUNT(*) AS duplicate_count
-  FROM users
-  GROUP BY lower(username)
-  HAVING COUNT(*) > 1
-`).all();
-
-if (duplicateUsernameRows.length === 0) {
-  db.exec(`
-    DROP INDEX IF EXISTS idx_users_username_nocase;
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_nocase_unique
-    ON users(username COLLATE NOCASE);
-  `);
-} else {
-  db.exec("CREATE INDEX IF NOT EXISTS idx_users_username_nocase ON users(username COLLATE NOCASE)");
-  const duplicateUsernames = duplicateUsernameRows
-    .map((row) => row.normalized_username)
-    .join(", ");
-  console.warn(
-    `[db] Skipping case-insensitive username uniqueness because duplicate usernames already exist: ${duplicateUsernames}`,
-  );
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS pomodoro_state (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+        data TEXT NOT NULL DEFAULT '{}',
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+  } finally {
+    client.release();
+  }
 }
 
-module.exports = db;
+bootstrap().catch((err) => {
+  console.error("[db] Schema bootstrap failed:", err.message);
+});
+
+module.exports = pool;

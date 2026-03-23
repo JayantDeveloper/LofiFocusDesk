@@ -344,7 +344,9 @@ function App() {
         ) : null}
         {showAuthModal ? <AuthModal onAuthed={() => setIsAuthScreenOpen(false)} /> : null}
       </div>
-      {user && !isAuthScreenOpen ? <SettingsButton onClick={() => setIsSettingsOpen(true)} /> : null}
+      {user && !isAuthScreenOpen && !isBoardPopupOpen && !isCalendarPopupOpen ? (
+        <SettingsButton onClick={() => setIsSettingsOpen(true)} />
+      ) : null}
       {user && !isAuthScreenOpen ? (
         <SettingsDrawer
           isOpen={isSettingsOpen}
@@ -382,7 +384,7 @@ function App() {
         </div>
       ) : null}
 
-      {sceneInteractable ? (
+      {isSceneReady && !isAuthScreenOpen && !isSettingsOpen && !isBoardPopupOpen && !isCalendarPopupOpen ? (
         <FocusRoomHud
           isCollapsed={isHudCollapsed}
           onCollapsedChange={setIsHudCollapsed}

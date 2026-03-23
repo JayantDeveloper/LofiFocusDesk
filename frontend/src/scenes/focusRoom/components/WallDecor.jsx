@@ -4,12 +4,12 @@ import { BoardCss3DObject } from "./Css3DLayer";
 const RIGHT_BOOKCASE_X = 0.9;
 const SHELF_LEVELS = [0.42, 0.72, 1.02, 1.32, 1.62, 1.92];
 const BOOK_X_SLOTS = [-0.49, -0.38, -0.27, -0.16, -0.05, 0.06, 0.17, 0.28, 0.39, 0.49];
-const BULLETIN_BOARD_APP_HTML_WIDTH = 728;
-const BULLETIN_BOARD_APP_HTML_HEIGHT = 404;
-const BULLETIN_BOARD_APP_LOCAL_WIDTH = 1.82;
+const BULLETIN_BOARD_APP_HTML_WIDTH = 968;
+const BULLETIN_BOARD_APP_HTML_HEIGHT = 444;
+const BULLETIN_BOARD_APP_LOCAL_WIDTH = 2.202;
 const BULLETIN_BOARD_APP_LOCAL_HEIGHT =
   (BULLETIN_BOARD_APP_LOCAL_WIDTH * BULLETIN_BOARD_APP_HTML_HEIGHT) / BULLETIN_BOARD_APP_HTML_WIDTH;
-const BULLETIN_BOARD_APP_POSITION = [0, 0, 0.055];
+const BULLETIN_BOARD_APP_POSITION = [0, 0, 0.093];
 const BOOK_COLORS = [
   "#8f4a3e",
   "#3f6d8a",
@@ -263,14 +263,14 @@ function CalendarAndPhotos({ focusScore, taskScore }) {
 
 function TodoBoardPlaceholder({ boardPomodoro, boardTodo, onOpenBoardPopup, textures }) {
   return (
-    <group name="todo-app-placeholder" position={[0.18, 1.95, -3.47]} scale={[1.3, 1.3, 1.3]}>
+    <group name="todo-app-placeholder" position={[0.18, 2.05, -3.47]} scale={[1.3, 1.3, 1.3]}>
       <mesh castShadow receiveShadow>
-        <boxGeometry args={[1.95, 1.14, 0.04]} />
+        <boxGeometry args={[2.36, 1.14, 0.04]} />
         <meshStandardMaterial color="#b88959" map={textures.cork} roughness={0.94} />
       </mesh>
 
       <mesh castShadow receiveShadow position={[0, 0, 0.02]}>
-        <boxGeometry args={[1.82, 1.01, 0.01]} />
+        <boxGeometry args={[2.202, 1.01, 0.01]} />
         <meshStandardMaterial
           color="#d6c7a8"
           roughness={0.93}
@@ -281,21 +281,21 @@ function TodoBoardPlaceholder({ boardPomodoro, boardTodo, onOpenBoardPopup, text
       </mesh>
 
       <mesh castShadow receiveShadow position={[0, 0.58, -0.02]}>
-        <boxGeometry args={[2.07, 0.1, 0.07]} />
+        <boxGeometry args={[2.505, 0.1, 0.07]} />
         <meshStandardMaterial color="#6f4d38" map={textures.wood} roughness={0.7} />
       </mesh>
 
       <mesh castShadow receiveShadow position={[0, -0.58, -0.02]}>
-        <boxGeometry args={[2.07, 0.1, 0.07]} />
+        <boxGeometry args={[2.505, 0.1, 0.07]} />
         <meshStandardMaterial color="#6f4d38" map={textures.wood} roughness={0.7} />
       </mesh>
 
-      <mesh castShadow receiveShadow position={[-1.04, 0, -0.02]}>
+      <mesh castShadow receiveShadow position={[-1.258, 0, -0.02]}>
         <boxGeometry args={[0.1, 1.14, 0.07]} />
         <meshStandardMaterial color="#6f4d38" map={textures.wood} roughness={0.7} />
       </mesh>
 
-      <mesh castShadow receiveShadow position={[1.04, 0, -0.02]}>
+      <mesh castShadow receiveShadow position={[1.258, 0, -0.02]}>
         <boxGeometry args={[0.1, 1.14, 0.07]} />
         <meshStandardMaterial color="#6f4d38" map={textures.wood} roughness={0.7} />
       </mesh>
@@ -305,7 +305,6 @@ function TodoBoardPlaceholder({ boardPomodoro, boardTodo, onOpenBoardPopup, text
         boardTodo={boardTodo}
         className="focus-board-screen-shell bulletin-board-screen focus-board-preview-screen"
         heightPx={BULLETIN_BOARD_APP_HTML_HEIGHT}
-        onOpen={onOpenBoardPopup}
         position={BULLETIN_BOARD_APP_POSITION}
         worldHeight={BULLETIN_BOARD_APP_LOCAL_HEIGHT}
         worldWidth={BULLETIN_BOARD_APP_LOCAL_WIDTH}

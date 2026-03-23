@@ -35,11 +35,7 @@ function signToken(userId, remember) {
 }
 
 function isDuplicateUserError(error) {
-  return (
-    error &&
-    error.code === "SQLITE_CONSTRAINT" &&
-    /UNIQUE constraint failed: users\.username/i.test(error.message || "")
-  );
+  return error && error.code === "23505";
 }
 
 async function register(req, res) {
@@ -59,12 +55,12 @@ async function register(req, res) {
   }
 
   try {
-    if (userExistsByUsername(normalizedUsername)) {
+    if (await userExistsByUsername(normalizedUsername)) {
       res.status(409).json({ error: DUPLICATE_USERNAME_ERROR });
       return;
     }
 
-    const user = createUser({
+    const user = await createUser({
       username: normalizedUsername,
       passwordHash: await bcrypt.hash(passwordString, BCRYPT_SALT_ROUNDS),
     });
@@ -101,7 +97,7 @@ async function login(req, res) {
   }
 
   try {
-    const user = findUserByUsername(normalizedUsername);
+    const user = await findUserByUsername(normalizedUsername);
 
     if (!user) {
       res.status(401).json({ error: "Invalid username or password." });
@@ -129,14 +125,14 @@ function logout(_req, res) {
   res.json({ ok: true });
 }
 
-function getCurrentUser(req, res) {
+async function getCurrentUser(req, res) {
   if (!req.userId) {
     res.json({ user: null });
     return;
   }
 
   try {
-    const user = findUserById(req.userId);
+    const user = await findUserById(req.userId);
     if (!user) {
       res.status(401).json({ user: null });
       return;

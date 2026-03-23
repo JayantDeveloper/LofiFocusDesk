@@ -23,12 +23,10 @@ export function FocusTodoBoardApp({ boardPomodoro, boardTodo }) {
     handleDragStart,
     handleDrop,
     items,
-    removeDoneItems,
     updateItem,
   } = boardTodo;
 
   const year = new Date().getFullYear();
-  const selectedItemsCount = items.reduce((count, item) => count + (item.done ? 1 : 0), 0);
 
   return (
     <div className="focus-board-app">
@@ -36,6 +34,14 @@ export function FocusTodoBoardApp({ boardPomodoro, boardTodo }) {
         <header className="focus-board-navbar">
           <h1>To Do List</h1>
         </header>
+
+        <div className="focus-board-table-header">
+          <span>Task Name</span>
+          <span>Status</span>
+          <span>Difficulty</span>
+          <span>XP</span>
+          <span></span>
+        </div>
 
         <main className="focus-board-items-section">
           {items.length === 0 ? (
@@ -58,16 +64,8 @@ export function FocusTodoBoardApp({ boardPomodoro, boardTodo }) {
         </main>
 
         <div className="focus-board-action-row">
-          <button className="focus-board-done-button" onClick={removeDoneItems}>
-            <span>Done With Task</span>
-            {selectedItemsCount > 0 && (
-              <span className="focus-board-done-count">
-                ({selectedItemsCount} {selectedItemsCount === 1 ? "Item" : "Items"} selected)
-              </span>
-            )}
-          </button>
           <button className="focus-board-add-button" onClick={addItem}>
-            Add Item
+            + Add Item
           </button>
         </div>
 

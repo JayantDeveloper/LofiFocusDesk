@@ -65,17 +65,46 @@ function createCorkTexture() {
     return finalizeTexture(canvas, 2, 2);
   }
 
-  context.fillStyle = "#b98959";
+  // Base tan-brown fill
+  context.fillStyle = "#c2935a";
   context.fillRect(0, 0, TEXTURE_SIZE, TEXTURE_SIZE);
 
-  for (let index = 0; index < 1800; index += 1) {
-    const x = (index * 37) % TEXTURE_SIZE;
-    const y = (index * 53) % TEXTURE_SIZE;
-    const alpha = 0.09 + ((index % 5) * 0.03);
-    const size = 1 + (index % 3);
+  // Horizontal grain bands — the primary fiber direction of cork/burlap
+  for (let y = 0; y < TEXTURE_SIZE; y += 1) {
+    const v = (y * 7 + 3) % 17;
+    const lightDark = v < 8 ? -1 : 1;
+    const shift = lightDark * (4 + (v % 5));
+    context.strokeStyle = `rgba(${110 + shift},${68 + shift},${22 + shift},0.28)`;
+    context.lineWidth = 1;
+    context.beginPath();
+    context.moveTo(0, y + 0.5);
+    context.lineTo(TEXTURE_SIZE, y + 0.5);
+    context.stroke();
+  }
 
-    context.fillStyle = `rgba(101, 62, 32, ${alpha.toFixed(3)})`;
-    context.fillRect(x, y, size, size);
+  // Short horizontal fiber strokes for variation
+  for (let i = 0; i < 280; i += 1) {
+    const x = (i * 43) % TEXTURE_SIZE;
+    const y = (i * 31) % TEXTURE_SIZE;
+    const len = 5 + (i % 14);
+    const alpha = 0.07 + (i % 5) * 0.022;
+    const isDark = i % 3 === 0;
+    context.strokeStyle = isDark
+      ? `rgba(95, 58, 18, ${alpha.toFixed(3)})`
+      : `rgba(224, 178, 110, ${alpha.toFixed(3)})`;
+    context.lineWidth = 1;
+    context.beginPath();
+    context.moveTo(x, y + 0.5);
+    context.lineTo(Math.min(x + len, TEXTURE_SIZE), y + ((i % 3) - 1) * 0.4);
+    context.stroke();
+  }
+
+  // Occasional dark grain flecks
+  for (let i = 0; i < 18; i += 1) {
+    const x = (i * 71) % TEXTURE_SIZE;
+    const y = (i * 53) % TEXTURE_SIZE;
+    context.fillStyle = "rgba(105, 62, 18, 0.18)";
+    context.fillRect(x, y, 2 + (i % 4), 1);
   }
 
   return finalizeTexture(canvas, 2, 2);
