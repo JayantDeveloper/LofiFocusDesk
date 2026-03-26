@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { TODO_DIFFICULTY_OPTIONS, TODO_STATUS_OPTIONS } from "../constants/todoBoardConstants";
+import { DIFFICULTY_XP, TODO_DIFFICULTY_OPTIONS, TODO_STATUS_OPTIONS } from "../constants/todoBoardConstants";
 import { useAuth } from "../store/AuthStore";
 import { apiRequest } from "../utils/apiClient";
 
@@ -58,6 +58,7 @@ function readTaskScoreSnapshot(storageKey) {
     return {
       doneDeletedTasks: toNonNegativeInteger(parsed.doneDeletedTasks, 0),
       totalCreatedTasks: toNonNegativeInteger(parsed.totalCreatedTasks, 0),
+      earnedTokens: toNonNegativeInteger(parsed.earnedTokens, 0),
     };
   } catch {
     return null;
@@ -91,6 +92,7 @@ export function useBoardTodoItems() {
   const [items, setItems] = useState([]);
   const [doneDeletedTasks, setDoneDeletedTasks] = useState(0);
   const [totalCreatedTasks, setTotalCreatedTasks] = useState(0);
+  const [earnedTokens, setEarnedTokens] = useState(0);
   const [isHydrating, setIsHydrating] = useState(true);
   const taskScoreStorageKey = useMemo(() => getTaskScoreStorageKey(user), [user]);
 
@@ -110,11 +112,14 @@ export function useBoardTodoItems() {
           const snapshot = readTaskScoreSnapshot(taskScoreStorageKey);
           const nextDoneDeletedTasks = snapshot?.doneDeletedTasks ?? 0;
           const nextTotalCreatedTasks = Math.max(visibleTaskCount, snapshot?.totalCreatedTasks ?? visibleTaskCount);
+          const nextEarnedTokens = snapshot?.earnedTokens ?? 0;
           setDoneDeletedTasks(nextDoneDeletedTasks);
           setTotalCreatedTasks(nextTotalCreatedTasks);
+          setEarnedTokens(nextEarnedTokens);
           writeTaskScoreSnapshot(taskScoreStorageKey, {
             doneDeletedTasks: nextDoneDeletedTasks,
             totalCreatedTasks: nextTotalCreatedTasks,
+            earnedTokens: nextEarnedTokens,
           });
         } catch {
           if (!isMounted) return;
@@ -143,8 +148,9 @@ export function useBoardTodoItems() {
     writeTaskScoreSnapshot(taskScoreStorageKey, {
       doneDeletedTasks,
       totalCreatedTasks: Math.max(items.length, totalCreatedTasks),
+      earnedTokens,
     });
-  }, [doneDeletedTasks, items.length, taskScoreStorageKey, totalCreatedTasks, user]);
+  }, [doneDeletedTasks, earnedTokens, items.length, taskScoreStorageKey, totalCreatedTasks, user]);
 
   const deleteItem = useCallback(
     async (idToDelete) => {
@@ -177,8 +183,11 @@ export function useBoardTodoItems() {
 
       // Marking a task Done auto-removes it and counts toward the score.
       if (fieldName === "status" && value === "Done") {
+        const completedItem = items.find((item) => item.id === idToUpdate);
+        const tokensForTask = DIFFICULTY_XP[completedItem?.difficulty] ?? 25;
         setItems((prev) => prev.filter((item) => item.id !== idToUpdate));
         setDoneDeletedTasks((prev) => prev + 1);
+        setEarnedTokens((prev) => prev + tokensForTask);
         if (!isOptimisticTaskId(idToUpdate)) {
           try {
             await apiRequest(`/api/tasks/${idToUpdate}`, { method: "DELETE" });
@@ -213,7 +222,7 @@ export function useBoardTodoItems() {
         return;
       }
     },
-    [user],
+    [items, user],
   );
 
   const addItem = useCallback(async () => {
@@ -292,6 +301,7 @@ export function useBoardTodoItems() {
   const resetTaskScore = useCallback(() => {
     setDoneDeletedTasks(0);
     setTotalCreatedTasks(items.length);
+    setEarnedTokens(0);
   }, [items.length]);
 
   return useMemo(
@@ -309,6 +319,7 @@ export function useBoardTodoItems() {
       resetTaskScore,
       updateItem,
       doneDeletedTasks,
+      earnedTokens,
       totalCreatedTasks: Math.max(items.length, totalCreatedTasks),
     }),
     [
@@ -316,6 +327,7 @@ export function useBoardTodoItems() {
       deleteItem,
       doneDeletedTasks,
       draggedItemId,
+      earnedTokens,
       handleDragEnd,
       handleDragOver,
       handleDragStart,

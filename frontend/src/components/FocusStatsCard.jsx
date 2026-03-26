@@ -6,6 +6,7 @@ function formatScore(score) {
 export function FocusStatsCard({
   completedFocusSessions,
   completedTasks,
+  earnedTokens,
   focusScore,
   isOpen,
   onClose,
@@ -19,6 +20,7 @@ export function FocusStatsCard({
     0,
     Number.isFinite(completedFocusSessions) ? completedFocusSessions : 0,
   );
+  const safeEarnedTokens = Math.max(0, Number.isFinite(earnedTokens) ? earnedTokens : 0);
   const cardClassName = `focus-stats-card ${isOpen ? "is-open" : "is-closed"}`;
 
   return (
@@ -48,6 +50,12 @@ export function FocusStatsCard({
           <span>
             {safeCompletedTasks}/{safeTotalTasks} tasks cleared via Done
           </span>
+        </article>
+
+        <article className="focus-stats-tile tokens-earned">
+          <h3>Tokens Earned</h3>
+          <p>{safeEarnedTokens}</p>
+          <span>pts from completed tasks</span>
         </article>
       </div>
     </section>

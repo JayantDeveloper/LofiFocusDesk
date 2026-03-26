@@ -111,6 +111,7 @@ function App() {
     !isStatsCardOpen;
   const hotkeysEnabled = isSceneReady && !isAuthScreenOpen && !isSettingsOpen;
   const todoItems = boardTodo.items;
+  const earnedTokens = boardTodo.earnedTokens ?? 0;
   const completedTasks = Math.max(0, boardTodo.doneDeletedTasks ?? 0);
   const totalTasks = Math.max(0, Number.isFinite(boardTodo.totalCreatedTasks) ? boardTodo.totalCreatedTasks : todoItems.length);
   const taskScore =
@@ -411,6 +412,7 @@ function App() {
         <FocusStatsCard
           completedFocusSessions={completedFocusSessions}
           completedTasks={completedTasks}
+          earnedTokens={earnedTokens}
           focusScore={focusScore}
           isOpen={isStatsCardOpen}
           onClose={() => setIsStatsCardOpen(false)}
