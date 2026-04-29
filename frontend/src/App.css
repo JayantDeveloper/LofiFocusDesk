@@ -102,19 +102,20 @@
   pointer-events: auto !important;
 }
 
-/* Animated ellipsis for loading veil */
-.focus-room-auth-veil::after {
-  content: '';
+/* Animated ellipsis for loading veil — dots are always rendered (no layout shift) */
+.veil-label { white-space: nowrap; }
+.veil-dots { display: inline; }
+.veil-dots span {
   display: inline-block;
-  width: 1.5em;
-  animation: veil-dots 1.4s steps(4, end) infinite;
+  animation: veil-dot-blink 1.4s ease-in-out infinite;
+  opacity: 0;
 }
-@keyframes veil-dots {
-  0%   { content: ''; }
-  25%  { content: '.'; }
-  50%  { content: '..'; }
-  75%  { content: '...'; }
-  100% { content: ''; }
+.veil-dots span:nth-child(1) { animation-delay: 0s; }
+.veil-dots span:nth-child(2) { animation-delay: 0.22s; }
+.veil-dots span:nth-child(3) { animation-delay: 0.44s; }
+@keyframes veil-dot-blink {
+  0%, 60%, 100% { opacity: 0; }
+  30% { opacity: 1; }
 }
 
 .focus-board-preview-screen {

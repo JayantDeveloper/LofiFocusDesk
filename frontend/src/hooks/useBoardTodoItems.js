@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DIFFICULTY_XP, TODO_DIFFICULTY_OPTIONS, TODO_STATUS_OPTIONS } from "../constants/todoBoardConstants";
 import { useAuth } from "../store/AuthStore";
+import { useStartupData } from "../store/StartupDataStore";
 import { apiRequest } from "../utils/apiClient";
 
 const EDITABLE_FIELDS = new Set(["title", "difficulty", "status"]);
@@ -88,6 +89,7 @@ function sortByPositionThenId(items) {
 
 export function useBoardTodoItems() {
   const { user } = useAuth();
+  const { data: startupData, ready: startupReady } = useStartupData();
   const [draggedItemId, setDraggedItemId] = useState(null);
   const [items, setItems] = useState([]);
   const [doneDeletedTasks, setDoneDeletedTasks] = useState(0);
@@ -97,12 +99,13 @@ export function useBoardTodoItems() {
   const taskScoreStorageKey = useMemo(() => getTaskScoreStorageKey(user), [user]);
 
   useEffect(() => {
+    if (user && !startupReady) return; // wait for startup fetch before loading
     let isMounted = true;
     async function load() {
       if (user) {
         setIsHydrating(true);
         try {
-          const data = await apiRequest("/api/tasks");
+          const data = startupData ?? await apiRequest("/api/tasks");
           if (!isMounted) return;
           const normalizedItems = (data.tasks || [])
             .map(normalizeItem)
@@ -141,7 +144,7 @@ export function useBoardTodoItems() {
     return () => {
       isMounted = false;
     };
-  }, [taskScoreStorageKey, user]);
+  }, [taskScoreStorageKey, user, startupReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!taskScoreStorageKey || !user) return;

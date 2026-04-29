@@ -342,7 +342,12 @@ function App() {
       <div className="focus-room-auth-layer">
         {(showAuthLoading || isSceneLoading) ? (
           <div className="focus-room-auth-veil">
-            {isSceneLoading ? "Loading room assets..." : "Preparing your workspace..."}
+            <span className="veil-label">
+              {isSceneLoading ? "Loading room assets" : "Preparing your workspace"}
+              <span className="veil-dots" aria-hidden="true">
+                <span>.</span><span>.</span><span>.</span>
+              </span>
+            </span>
           </div>
         ) : null}
         {showAuthModal ? <AuthModal onAuthed={() => setIsAuthScreenOpen(false)} /> : null}

@@ -7,9 +7,11 @@ import {
 } from "../constants/pomodoroConstants";
 import { apiRequest } from "../utils/apiClient";
 import { useAuth } from "../store/AuthStore";
+import { useStartupData } from "../store/StartupDataStore";
 
 export function useBoardPomodoroState() {
   const { user } = useAuth();
+  const { data: startupData, ready: startupReady } = useStartupData();
   const authSessionKey = user ? `${user.id ?? user.username ?? "user"}` : "";
   const [isRunning, setIsRunning] = useState(false);
   const [isBreak, setIsBreak] = useState(false);
@@ -28,14 +30,15 @@ export function useBoardPomodoroState() {
 
   useEffect(() => {
     if (!authSessionKey) return;
+    if (user && !startupReady) return; // wait for startup fetch before loading
     let isMounted = true;
     async function load() {
       if (!user) return;
       setIsHydrating(true);
       try {
-        const data = await apiRequest("/api/pomodoro");
+        const raw = startupData ?? await apiRequest("/api/pomodoro");
         if (skipHydrationSessionRef.current === authSessionKey) return;
-        const state = data.state || {};
+        const state = (startupData ? raw.pomodoro?.state : raw.state) || {};
         setIsRunning(state.isRunning ?? false);
         setIsBreak(state.isBreak ?? false);
         setTimeLeft(state.timeLeft ?? WORK_SECONDS);
@@ -52,7 +55,7 @@ export function useBoardPomodoroState() {
     return () => {
       isMounted = false;
     };
-  }, [authSessionKey, user]);
+  }, [authSessionKey, user, startupReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!authSessionKey) {

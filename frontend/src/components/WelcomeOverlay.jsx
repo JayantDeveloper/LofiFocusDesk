@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import "./WelcomeOverlay.css";
 
-const WELCOME_OVERLAY_DURATION_MS = 2500;
-const EXIT_ANIMATION_MS = 700;
-const PROGRESS_DURATION_MS = WELCOME_OVERLAY_DURATION_MS - 600;
+const WELCOME_OVERLAY_DURATION_MS = 5000;
+const EXIT_ANIMATION_MS = 900;
+const PROGRESS_DURATION_MS = WELCOME_OVERLAY_DURATION_MS - 1200;
 
 export function WelcomeOverlay({ canDismiss = false, onComplete }) {
   const [phase, setPhase] = useState("visible");
