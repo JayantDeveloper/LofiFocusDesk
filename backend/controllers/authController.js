@@ -55,15 +55,17 @@ async function register(req, res) {
   }
 
   try {
-    if (await userExistsByUsername(normalizedUsername)) {
+    const [exists, passwordHash] = await Promise.all([
+      userExistsByUsername(normalizedUsername),
+      bcrypt.hash(passwordString, BCRYPT_SALT_ROUNDS),
+    ]);
+
+    if (exists) {
       res.status(409).json({ error: DUPLICATE_USERNAME_ERROR });
       return;
     }
 
-    const user = await createUser({
-      username: normalizedUsername,
-      passwordHash: await bcrypt.hash(passwordString, BCRYPT_SALT_ROUNDS),
-    });
+    const user = await createUser({ username: normalizedUsername, passwordHash });
 
     if (!user) {
       res.status(500).json({ error: "Failed to create account" });

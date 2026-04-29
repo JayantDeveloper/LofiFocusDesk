@@ -19,7 +19,10 @@ export function AuthProvider({ children }) {
         if (!isMounted) return;
         const nextUser = data?.user || null;
         setUser(nextUser);
-      } catch (error) {
+        if (nextUser) {
+          setAuthEventId((prev) => prev + 1);
+        }
+      } catch {
         if (!isMounted) return;
         setUser(null);
       } finally {

@@ -44,8 +44,23 @@ app.use("/api/pomodoro", pomodoroRoutes);
 
 app.use(errorHandler);
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`FocusDesk backend running on http://localhost:${PORT}`);
 });
+
+// Keep Render free-tier from spinning down: self-ping every 14 minutes.
+// Only runs in production where the service URL is known.
+const SELF_URL = process.env.RENDER_EXTERNAL_URL;
+if (SELF_URL) {
+  const KEEP_ALIVE_INTERVAL_MS = 14 * 60 * 1000;
+  setInterval(async () => {
+    try {
+      await fetch(`${SELF_URL}/api/health`);
+    } catch {
+      // Non-fatal — network blip during self-ping.
+    }
+  }, KEEP_ALIVE_INTERVAL_MS);
+  console.log(`[keep-alive] Self-pinging ${SELF_URL}/api/health every 14 min`);
+}
 
 module.exports = app;

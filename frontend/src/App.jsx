@@ -200,8 +200,10 @@ function App() {
   }, [sceneSessionId]);
 
   useEffect(() => {
-    if (!isWelcomeComplete) return;
-    if (!user && !isAuthStateLoading) {
+    if (!isWelcomeComplete || isAuthStateLoading) return;
+    if (user) {
+      setIsAuthScreenOpen(false);
+    } else {
       setIsAuthScreenOpen(true);
     }
   }, [isWelcomeComplete, isAuthStateLoading, user]);
