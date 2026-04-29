@@ -28,6 +28,7 @@ import {
   fetchYouTubeVideoMetadata,
   normalizeMusicUrls,
 } from "./utils/music";
+import { checkWebGLSupport } from "./utils/webgl";
 import "./App.css";
 
 const loadFocusRoomExperience = () => import("./scenes/focusRoom/FocusRoomExperience");
@@ -53,6 +54,7 @@ function getInitialClockDisplay() {
 
 function App() {
   const [isWelcomeComplete, setIsWelcomeComplete] = useState(false);
+  const [isWebGLSupported, setIsWebGLSupported] = useState(true);
   const [isBoardPopupOpen, setIsBoardPopupOpen] = useState(false);
   const [isCalendarPopupOpen, setIsCalendarPopupOpen] = useState(false);
   const [isStatsCardOpen, setIsStatsCardOpen] = useState(false);
@@ -72,7 +74,7 @@ function App() {
   const isAuthStateLoading = loading || isAuthenticating;
   const showAuthModal = isAuthScreenOpen;
   const showAuthLoading = isAuthScreenOpen && isAuthStateLoading;
-  const shouldRenderScene = isWelcomeComplete && Boolean(user) && !isAuthScreenOpen;
+  const shouldRenderScene = isWelcomeComplete && Boolean(user) && !isAuthScreenOpen && isWebGLSupported;
   const shouldRenderSceneShell = isSceneModuleLoaded && shouldRenderScene;
   const boardPomodoro = useBoardPomodoroState();
   const boardTodo = useBoardTodoItems();
@@ -239,6 +241,10 @@ function App() {
   }, [user]);
 
   useEffect(() => {
+    setIsWebGLSupported(checkWebGLSupport());
+  }, []);
+
+  useEffect(() => {
     let isCancelled = false;
     loadFocusRoomExperience()
       .then(() => {
@@ -352,6 +358,15 @@ function App() {
         ) : null}
         {showAuthModal ? <AuthModal onAuthed={() => setIsAuthScreenOpen(false)} /> : null}
       </div>
+      {!isWebGLSupported && user && !isAuthScreenOpen ? (
+        <div className="webgl-unavailable-notice">
+          <p>
+            Your browser could not start the 3D room.
+            <br />
+            Enable hardware acceleration in your browser settings to use LofiFocusDesk.
+          </p>
+        </div>
+      ) : null}
       {user && !isAuthScreenOpen && !isBoardPopupOpen && !isCalendarPopupOpen ? (
         <SettingsButton onClick={() => setIsSettingsOpen(true)} />
       ) : null}

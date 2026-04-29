@@ -144,6 +144,7 @@ export default function FocusRoomExperience({
         alpha: false,
         antialias: sceneQuality.antialias,
         depth: true,
+        failIfMajorPerformanceCaveat: false,
         powerPreference: "high-performance",
         precision: "mediump",
         preserveDrawingBuffer: false,

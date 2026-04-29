@@ -72,6 +72,27 @@
   background: #1a1610;
 }
 
+.webgl-unavailable-notice {
+  position: absolute;
+  inset: 0;
+  z-index: 9900;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, #a88667 0%, #6f5237 46%, #402611 100%);
+  color: #e2e8f0;
+  font-family: "Manrope", "Avenir Next", sans-serif;
+  text-align: center;
+  padding: 2rem;
+  pointer-events: none;
+}
+
+.webgl-unavailable-notice p {
+  font-size: 1rem;
+  line-height: 1.7;
+  max-width: 34ch;
+  font-weight: 600;
+}
+
 .currently-playing-shell {
   position: absolute;
   top: 20px;
