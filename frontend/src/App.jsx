@@ -10,6 +10,7 @@ import { useBoardPomodoroState } from "./hooks/useBoardPomodoroState";
 import { useBoardTodoItems } from "./hooks/useBoardTodoItems";
 import { WelcomeOverlay } from "./components/WelcomeOverlay";
 import { AuthModal } from "./components/AuthModal";
+import { WebGLErrorBoundary } from "./components/WebGLErrorBoundary";
 import { SettingsDrawer } from "./components/SettingsDrawer";
 import { SettingsButton } from "./components/SettingsButton";
 import dayIcon from "./assets/lofideskiconday.png";
@@ -381,6 +382,7 @@ function App() {
 
       {shouldRenderSceneShell ? (
         <div className={`focus-room-scene-shell ${isSceneVisible ? "is-visible" : ""}`}>
+          <WebGLErrorBoundary onWebGLFailed={() => setIsWebGLSupported(false)}>
           <Suspense fallback={null}>
             <FocusRoomExperience
               boardPomodoro={boardPomodoro}
@@ -404,6 +406,7 @@ function App() {
               onSceneReady={handleSceneReady}
             />
           </Suspense>
+          </WebGLErrorBoundary>
         </div>
       ) : null}
 
