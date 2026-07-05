@@ -33,3 +33,4 @@ backend/instance/
 *.db
 *.db-shm
 *.db-wal
+.vercel
