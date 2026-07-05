@@ -53,15 +53,54 @@ function formatScore(score) {
   return Math.round(clamped);
 }
 
+const BOOK_TITLES = [
+  "Slow Mornings",
+  "Rainy Loops",
+  "Night Drive",
+  "Warm Static",
+  "Paper Moons",
+  "Quiet Hours",
+  "Low Fidelity",
+  "Tape Hiss",
+  "Neon Rain",
+  "Soft Focus",
+  "Dusk Notes",
+  "Analog Heart",
+  "Window Seat",
+  "Midnight Chai",
+  "Dial Tones",
+  "Golden Hour",
+  "City Hum",
+  "Lamp Light",
+  "Fern & Ink",
+  "Vinyl Dust",
+  "Slow Waves",
+  "Dream Cache",
+  "Attic Air",
+  "Mellow Math",
+  "Coffee Rings",
+  "Static Bloom",
+  "Moon Mail",
+  "Half Asleep",
+  "Small Hours",
+  "Ivory Keys",
+];
+
 const BOOKS = SHELF_LEVELS.flatMap((shelf, shelfIndex) =>
   BOOK_X_SLOTS.map((x, slotIndex) => {
     const pattern = shelfIndex * 4 + slotIndex;
+    const bookIndex = shelfIndex * BOOK_X_SLOTS.length + slotIndex;
     return {
       color: BOOK_COLORS[(shelfIndex * 3 + slotIndex) % BOOK_COLORS.length],
       depth: 0.14 + ((pattern + 2) % 4) * 0.015,
       height: 0.18 + ((pattern + 1) % 6) * 0.015,
       shelf,
       tilt: slotIndex % 5 === 0 ? -0.04 : slotIndex % 4 === 0 ? 0.035 : 0,
+      // Every 3rd book gets a spine title so the shelf stays readable.
+      title:
+        bookIndex % 3 === 0
+          ? BOOK_TITLES[(pattern * 7 + shelfIndex) % BOOK_TITLES.length]
+          : null,
       width: 0.065 + (pattern % 3) * 0.012,
       x,
     };
@@ -104,16 +143,28 @@ function Shelf({ textures }) {
       ))}
 
       {BOOKS.map((book) => (
-        <mesh
+        <group
           key={`${book.shelf}-${book.x}-${book.height}`}
-          castShadow
-          receiveShadow
           position={[book.x, book.shelf + 0.03 + book.height * 0.5, 0.03]}
           rotation={[0, 0, book.tilt ?? 0]}
         >
-          <boxGeometry args={[book.width, book.height, book.depth]} />
-          <meshStandardMaterial color={book.color} roughness={0.78} />
-        </mesh>
+          <mesh castShadow receiveShadow>
+            <boxGeometry args={[book.width, book.height, book.depth]} />
+            <meshStandardMaterial color={book.color} roughness={0.78} />
+          </mesh>
+          {book.title ? (
+            <Text
+              anchorX="center"
+              anchorY="middle"
+              color="#f3ead9"
+              fontSize={0.0185}
+              position={[0, 0, book.depth * 0.5 + 0.003]}
+              rotation={[0, 0, -Math.PI / 2]}
+            >
+              {book.title}
+            </Text>
+          ) : null}
+        </group>
       ))}
     </group>
   );

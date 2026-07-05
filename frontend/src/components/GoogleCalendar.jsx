@@ -17,7 +17,7 @@ export default function GoogleCalendar({ embedUrl }) {
     <iframe
       src={src}
       title="Google Calendar"
-      style={{ border: 0, width: "100%", height: "600px" }}
+      style={{ border: 0, width: "100%", height: "clamp(400px, 70vh, 700px)" }}
       frameBorder="0"
       scrolling="no"
     />

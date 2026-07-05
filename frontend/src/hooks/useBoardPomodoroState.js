@@ -9,6 +9,8 @@ import { apiRequest } from "../utils/apiClient";
 import { useAuth } from "../store/AuthStore";
 import { useStartupData } from "../store/StartupDataStore";
 
+const PERSIST_INTERVAL_MS = 10_000;
+
 export function useBoardPomodoroState() {
   const { user } = useAuth();
   const { data: startupData, ready: startupReady } = useStartupData();
@@ -21,6 +23,8 @@ export function useBoardPomodoroState() {
   const completionAudioRef = useRef(null);
   const stopAlarmTimeoutRef = useRef(null);
   const skipHydrationSessionRef = useRef("");
+  const prevPersistedRef = useRef(null);
+  const lastPersistAtRef = useRef(0);
 
   useEffect(() => {
     if (!authSessionKey) {
@@ -146,8 +150,24 @@ export function useBoardPomodoroState() {
   }, [isRunning, isBreak, playCompletionRing]);
 
   useEffect(() => {
+    if (isHydrating) return;
+    const prev = prevPersistedRef.current;
+    prevPersistedRef.current = { isRunning, isBreak, timeLeft, completedFocusSessions };
+    // While running, timeLeft ticks every second — throttle those PUTs.
+    // Anything else (start/pause/reset/mode switch/session complete) flushes immediately.
+    const onlyTickChanged =
+      prev !== null &&
+      isRunning &&
+      prev.isRunning === isRunning &&
+      prev.isBreak === isBreak &&
+      prev.completedFocusSessions === completedFocusSessions &&
+      prev.timeLeft !== timeLeft;
+    if (onlyTickChanged && Date.now() - lastPersistAtRef.current < PERSIST_INTERVAL_MS) {
+      return;
+    }
+    lastPersistAtRef.current = Date.now();
     persistState({ isRunning, isBreak, timeLeft, completedFocusSessions });
-  }, [isRunning, isBreak, timeLeft, completedFocusSessions, persistState]);
+  }, [isRunning, isBreak, timeLeft, completedFocusSessions, isHydrating, persistState]);
 
   const resetTimer = useCallback(() => {
     setIsRunning(false);

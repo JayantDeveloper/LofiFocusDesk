@@ -12,6 +12,7 @@ const pomodoroRoutes = require("./routes/pomodoroRoutes");
 const taskRoutes = require("./routes/taskRoutes");
 const userRoutes = require("./routes/userRoutes");
 const startupRoutes = require("./routes/startupRoutes");
+const { pruneStaleDoneTasks } = require("./utils/repositories/taskRepository");
 
 const app = express();
 
@@ -49,6 +50,22 @@ app.use(errorHandler);
 const server = app.listen(PORT, () => {
   console.log(`FocusDesk backend running on http://localhost:${PORT}`);
 });
+
+// Done tasks are deleted on completion; prune any stragglers older than 7 days
+// (older clients, direct API writes) once at boot and then daily.
+const PRUNE_INTERVAL_MS = 24 * 60 * 60 * 1000;
+async function runDoneTaskPrune() {
+  try {
+    const removed = await pruneStaleDoneTasks(7);
+    if (removed > 0) {
+      console.log(`[prune] Removed ${removed} stale Done task(s)`);
+    }
+  } catch (err) {
+    console.error("[prune] Failed to prune Done tasks:", err.message);
+  }
+}
+setTimeout(runDoneTaskPrune, 15 * 1000);
+setInterval(runDoneTaskPrune, PRUNE_INTERVAL_MS);
 
 // Keep Render free-tier from spinning down: self-ping every 14 minutes.
 // Only runs in production where the service URL is known.

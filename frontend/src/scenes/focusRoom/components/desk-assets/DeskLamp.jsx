@@ -1,30 +1,11 @@
 import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { BackSide, CatmullRomCurve3, Color, Vector2, Vector3 } from "three";
+import { AdditiveBlending, BackSide, CatmullRomCurve3, Color, DoubleSide, Vector2, Vector3 } from "three";
 import { DESK_TOP_Y } from "../../../../constants/deskConstants";
+import { getLampTargetStrength } from "../../utils/lampSchedule";
 
-function clamp01(value) {
-  return Math.min(1, Math.max(0, value));
-}
-
-function smoothStep(edge0, edge1, value) {
-  const width = Math.max(0.0001, edge1 - edge0);
-  const t = clamp01((value - edge0) / width);
-  return t * t * (3 - 2 * t);
-}
-
-function normalizeHour(hour) {
-  return ((hour % 24) + 24) % 24;
-}
-
-function getLampTargetStrength(worldHour) {
-  const hour = normalizeHour(worldHour);
-  const sunsetFadeIn = smoothStep(17, 19.5, hour);
-  const sunriseFadeOut = 1 - smoothStep(5, 7.5, hour);
-  return Math.max(sunsetFadeIn, sunriseFadeOut);
-}
-
-export function DeskLamp({ isOn = false, sceneQuality, worldHourRef }) {
+// isOn: null = automatic (follows sunset/sunrise), true/false = user override.
+export function DeskLamp({ isOn = null, sceneQuality, worldHourRef }) {
   const neckCurve = useMemo(
     () =>
       new CatmullRomCurve3(
@@ -66,11 +47,31 @@ export function DeskLamp({ isOn = false, sceneQuality, worldHourRef }) {
   const lampStrengthRef = useRef(initialLampStrength);
   const bulbMaterialRef = useRef(null);
   const lampPointLightRef = useRef(null);
+  const lightConeMeshRef = useRef(null);
+  const lightConeMaterialRef = useRef(null);
+
+  // The visible beam runs from the shade mouth down its facing direction
+  // (shade group is rotated -3π/4 about z, so the opening points at
+  // (√2/2, -√2/2, 0)) until it reaches the desk surface at local y = 0.
+  const lightCone = useMemo(() => {
+    const mouth = new Vector3(
+      headPoint.x + shadeOffsetX,
+      headPoint.y + shadeOffsetY,
+      headPoint.z,
+    );
+    const direction = new Vector3(Math.SQRT1_2, -Math.SQRT1_2, 0);
+    const length = mouth.y / -direction.y;
+    const center = mouth.clone().addScaledVector(direction, length * 0.5);
+    return { center, length };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useFrame((_, delta) => {
-    const targetStrength = worldHourRef?.current != null
-      ? getLampTargetStrength(worldHourRef.current)
-      : (isOn ? 1 : 0);
+    const targetStrength = isOn != null
+      ? (isOn ? 1 : 0)
+      : worldHourRef?.current != null
+        ? getLampTargetStrength(worldHourRef.current)
+        : 0;
     lampStrengthRef.current += (targetStrength - lampStrengthRef.current) * Math.min(1, delta * 2.1);
     const lampStrength = lampStrengthRef.current;
 
@@ -82,6 +83,10 @@ export function DeskLamp({ isOn = false, sceneQuality, worldHourRef }) {
     if (lampPointLightRef.current) {
       lampPointLightRef.current.intensity = lampPointLightEnabled ? lampStrength * 1.15 : 0;
     }
+    if (lightConeMeshRef.current && lightConeMaterialRef.current) {
+      lightConeMeshRef.current.visible = lampStrength > 0.02;
+      lightConeMaterialRef.current.opacity = lampStrength * 0.045;
+    }
   });
 
   return (
@@ -90,6 +95,11 @@ export function DeskLamp({ isOn = false, sceneQuality, worldHourRef }) {
       rotation={[0, 0.24 - Math.PI / 6, 0]}
       scale={[0.15, 0.15, 0.15]}
     >
+      <mesh name="desk-lamp-hitbox" position={[0.2, 1.8, 0]}>
+        <cylinderGeometry args={[1.5, 1.2, 3.9, 12]} />
+        <meshBasicMaterial color="#000000" colorWrite={false} depthWrite={false} opacity={0} transparent />
+      </mesh>
+
       <mesh castShadow receiveShadow position={[0, 0.09, 0]}>
         <cylinderGeometry args={[0.88, 0.92, 0.18, 44]} />
         <meshStandardMaterial color="#cc1111" roughness={0.34} metalness={0.55} />
@@ -189,6 +199,25 @@ export function DeskLamp({ isOn = false, sceneQuality, worldHourRef }) {
           />
         </mesh>
       </group>
+
+      <mesh
+        ref={lightConeMeshRef}
+        position={[lightCone.center.x, lightCone.center.y, lightCone.center.z]}
+        rotation={[0, 0, -(Math.PI * 0.75)]}
+        visible={false}
+      >
+        <cylinderGeometry args={[0.68, 1.55, lightCone.length, 20, 1, true]} />
+        <meshBasicMaterial
+          ref={lightConeMaterialRef}
+          blending={AdditiveBlending}
+          color="#ffd9a0"
+          depthWrite={false}
+          opacity={0}
+          side={DoubleSide}
+          toneMapped={false}
+          transparent
+        />
+      </mesh>
 
       <pointLight
         color="#ffcf9a"

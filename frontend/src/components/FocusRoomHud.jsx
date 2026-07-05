@@ -5,6 +5,7 @@ const HUD_BINDS = [
   "C - Calendar / Wall Calendar",
   "S - Stats Card / Score Tiles",
   "R - Music / Radio",
+  "L - Desk Lamp",
   "1-5 - Select Radio Song",
 ];
 
@@ -22,6 +23,14 @@ export function FocusRoomHud({ isCollapsed = false, onCollapsedChange }) {
     const handlePointerDown = (event) => {
       if (!hudRef.current) return;
       if (hudRef.current.contains(event.target)) return;
+      // Clicks on the 3D canvas are camera drags/scene interactions, not
+      // "click outside to dismiss" gestures — keep the HUD open for those.
+      if (
+        event.target instanceof Element &&
+        event.target.closest("canvas") !== null
+      ) {
+        return;
+      }
       setCollapsed(true);
     };
 

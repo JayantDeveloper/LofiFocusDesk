@@ -27,3 +27,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Dead SQLite artifacts (real DB is Postgres)
+backend/instance/
+*.db
+*.db-shm
+*.db-wal

@@ -102,6 +102,7 @@ export function BoardCss3DObject({
   heightPx,
   onOpen,
   position,
+  worldHeight,
   worldWidth,
   widthPx,
 }) {
@@ -115,7 +116,10 @@ export function BoardCss3DObject({
   }, [className, heightPx, widthPx]);
 
   const cssObject = useMemo(() => new CSS3DObject(element), [element]);
-  const scale = worldWidth / widthPx;
+  // Width and height scale independently so worldHeight pins the exact board
+  // aspect ratio; without worldHeight it falls back to uniform scaling.
+  const scaleX = worldWidth / widthPx;
+  const scaleY = worldHeight != null ? worldHeight / heightPx : scaleX;
   const rootRef = useRef(null);
 
   useEffect(() => {
@@ -167,5 +171,5 @@ export function BoardCss3DObject({
     };
   }, [element, onOpen]);
 
-  return <primitive object={cssObject} position={position} scale={[scale, scale, scale]} />;
+  return <primitive object={cssObject} position={position} scale={[scaleX, scaleY, scaleX]} />;
 }

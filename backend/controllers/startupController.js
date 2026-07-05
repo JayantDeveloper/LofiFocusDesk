@@ -1,9 +1,10 @@
-const { listTasks } = require("../utils/repositories/taskRepository");
+const { getTaskStats, listTasks } = require("../utils/repositories/taskRepository");
 const { getPomodoroStateByUserId } = require("../utils/repositories/pomodoroRepository");
 
 async function getStartupData(req, res) {
-  const [tasks, pomodoroRow] = await Promise.all([
+  const [tasks, taskStats, pomodoroRow] = await Promise.all([
     listTasks(req.userId),
+    getTaskStats(req.userId),
     getPomodoroStateByUserId(req.userId),
   ]);
 
@@ -16,7 +17,7 @@ async function getStartupData(req, res) {
     }
   }
 
-  res.json({ tasks, pomodoro: { state: pomodoroState } });
+  res.json({ tasks, taskStats, pomodoro: { state: pomodoroState } });
 }
 
 module.exports = { getStartupData };

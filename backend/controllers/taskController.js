@@ -1,9 +1,12 @@
-const { TODO_DIFFICULTY_OPTIONS, TODO_STATUS_OPTIONS } = require("../constants/taskConstants");
+const { DIFFICULTY_XP, TODO_DIFFICULTY_OPTIONS, TODO_STATUS_OPTIONS } = require("../constants/taskConstants");
 const {
+  bumpTaskStats,
   createTask,
   deleteTaskForUser,
   findTaskForUser,
+  getTaskStats,
   listTasks,
+  resetTaskStats,
   updateTaskForUser,
 } = require("../utils/repositories/taskRepository");
 
@@ -24,6 +27,7 @@ async function createTaskHandler(req, res) {
   const done = body.done === true ? 1 : 0;
 
   const task = await createTask(req.userId, { title, difficulty, status, dueDate, notes, done });
+  await bumpTaskStats(req.userId, { created: 1 });
   res.status(201).json({ task });
 }
 
@@ -47,6 +51,18 @@ async function updateTaskHandler(req, res) {
   const status = has("status") && TODO_STATUS_OPTIONS.includes(body.status)
     ? body.status
     : (task.status ?? "Not Started");
+
+  // Completing a task removes it and rolls it into the persistent task score,
+  // so Done rows never accumulate in the table.
+  if (status === "Done" && task.status !== "Done") {
+    await deleteTaskForUser(task.id, req.userId);
+    const stats = await bumpTaskStats(req.userId, {
+      done: 1,
+      tokens: DIFFICULTY_XP[task.difficulty] ?? DIFFICULTY_XP.Easy,
+    });
+    res.json({ task: null, completed: true, stats });
+    return;
+  }
 
   const dueDate = has("dueDate") ? String(body.dueDate ?? "") : (task.due_date ?? "");
   const notes = has("notes") ? String(body.notes ?? "") : (task.notes ?? "");
@@ -76,9 +92,23 @@ async function deleteTaskHandler(req, res) {
   res.json({ ok: true });
 }
 
+async function getTaskStatsHandler(req, res) {
+  const stats = await getTaskStats(req.userId);
+  res.json({ stats });
+}
+
+async function resetTaskStatsHandler(req, res) {
+  const tasks = await listTasks(req.userId);
+  const openTaskCount = tasks.filter((task) => task.status !== "Done").length;
+  const stats = await resetTaskStats(req.userId, openTaskCount);
+  res.json({ stats });
+}
+
 module.exports = {
   createTaskHandler,
   deleteTaskHandler,
   getTasks,
+  getTaskStatsHandler,
+  resetTaskStatsHandler,
   updateTaskHandler,
 };

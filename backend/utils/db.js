@@ -66,6 +66,17 @@ async function bootstrap() {
     `);
 
     await client.query(`
+      CREATE TABLE IF NOT EXISTS task_stats (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+        done_tasks INTEGER NOT NULL DEFAULT 0,
+        created_tasks INTEGER NOT NULL DEFAULT 0,
+        earned_tokens INTEGER NOT NULL DEFAULT 0,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await client.query(`
       CREATE TABLE IF NOT EXISTS pomodoro_state (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,

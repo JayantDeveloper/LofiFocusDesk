@@ -1,4 +1,4 @@
-import { memo, useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import {
   AdditiveBlending,
@@ -9,6 +9,13 @@ import {
   Object3D,
   RepeatWrapping,
 } from "three";
+import {
+  clamp01,
+  getDayBlend,
+  getMoonPhaseFactor,
+  getTwilightFactor,
+  smooth01,
+} from "../utils/lightingMath";
 
 const CITY_BUILDINGS = [
   {
@@ -224,6 +231,51 @@ const ORBIT_CENTER_Y = WINDOW_CENTER_Y + 1.4;
 const ORBIT_RADIUS_Y = 1.1;
 const SHOW_SKY_BODIES = import.meta.env.VITE_SHOW_SKY_BODIES === "1";
 const SHOW_CLOUDS = import.meta.env.VITE_SHOW_CLOUDS === "1";
+const SHOW_STARS = import.meta.env.VITE_SHOW_STARS === "1";
+const SHOW_RAIN = import.meta.env.VITE_SHOW_RAIN === "1";
+
+const RAIN_DROP_COUNT = 130;
+const RAIN_SEED = 47021;
+const RAIN_MIN_Y = WINDOW_CENTER_Y - 0.62;
+const RAIN_MAX_Y = WINDOW_CENTER_Y + 0.78;
+const RAIN_RIPPLE_COUNT = 7;
+const RAIN_RIPPLE_PERIOD_S = 0.9;
+const SILL_TOP_Y = WINDOW_CENTER_Y - 0.65 + 0.031;
+
+// Rain streaks just outside the glass: LineSegments with one short vertical
+// segment per drop, falling and wrapping inside the window bounds.
+function createRainDrops() {
+  const random = createSeededRandom(RAIN_SEED);
+  const positions = new Float32Array(RAIN_DROP_COUNT * 6);
+  const drops = [];
+  for (let index = 0; index < RAIN_DROP_COUNT; index += 1) {
+    const x = WINDOW_GLASS_X - 0.06 + random(-0.025, 0.02);
+    const y = random(RAIN_MIN_Y, RAIN_MAX_Y);
+    const z = WINDOW_CENTER_Z + random(-1.0, 1.0);
+    const length = 0.05 + random(0, 0.04);
+    positions.set([x, y, z, x, y + length, z], index * 6);
+    drops.push({ length, speed: random(1.1, 2.1) });
+  }
+  return { positions, drops };
+}
+
+function createRainRipples() {
+  const random = createSeededRandom(RAIN_SEED + 991);
+  return Array.from({ length: RAIN_RIPPLE_COUNT }, () => ({
+    phase: random(0, 1),
+    x: WINDOW_SILL_X + random(-0.14, 0.14),
+    z: WINDOW_CENTER_Z + random(-0.95, 0.95),
+  }));
+}
+
+const STAR_FIELD_SEED = 90217;
+// Three layers so stars can twinkle out of phase and vary in size without a
+// per-star shader; sizes/opacities also read as brightness variety.
+const STAR_LAYERS = [
+  { count: 70, size: 0.034, baseOpacity: 0.6, twinkleSpeed: 0.9, phase: 0 },
+  { count: 55, size: 0.05, baseOpacity: 0.75, twinkleSpeed: 1.5, phase: 2.1 },
+  { count: 30, size: 0.072, baseOpacity: 0.9, twinkleSpeed: 0.6, phase: 4.2 },
+];
 
 function createSeededRandom(seed) {
   let state = seed >>> 0;
@@ -307,46 +359,93 @@ function createCloudTexture(seed) {
   return texture;
 }
 
-function clamp01(value) {
-  return Math.min(1, Math.max(0, value));
+const DUST_MOTE_COUNT = 80;
+const DUST_MOTE_SEED = 61873;
+const DUST_MIN_Y = WINDOW_CENTER_Y - 0.8;
+const DUST_MAX_Y = WINDOW_CENTER_Y + 0.55;
+
+// Floating dust in the daylight beam: seeded start positions plus per-mote
+// drift parameters, all mutated in place each frame.
+function createDustMotes() {
+  const random = createSeededRandom(DUST_MOTE_SEED);
+  const positions = new Float32Array(DUST_MOTE_COUNT * 3);
+  const motes = [];
+  for (let index = 0; index < DUST_MOTE_COUNT; index += 1) {
+    const x = WINDOW_FRAME_X + random(0.12, 1.5);
+    const y = random(DUST_MIN_Y, DUST_MAX_Y);
+    const z = WINDOW_CENTER_Z + random(-0.62, 0.62);
+    positions[index * 3] = x;
+    positions[index * 3 + 1] = y;
+    positions[index * 3 + 2] = z;
+    motes.push({
+      x,
+      z,
+      riseSpeed: random(0.012, 0.045),
+      swayAmp: random(0.01, 0.05),
+      swayFreq: random(0.2, 0.7),
+      phase: random(0, Math.PI * 2),
+    });
+  }
+  return { positions, motes };
 }
 
-function smooth01(value) {
-  const t = clamp01(value);
-  return t * t * t * (t * (t * 6 - 15) + 10);
+// Seeded star positions scattered in a band just in front of the sky backdrop
+// plane, biased toward the upper sky, with x jitter for a little parallax.
+function createStarPositions(seed, count) {
+  const random = createSeededRandom(seed);
+  const positions = new Float32Array(count * 3);
+  for (let index = 0; index < count; index += 1) {
+    positions[index * 3] = SKY_BACKDROP_X + random(0.08, 0.55);
+    positions[index * 3 + 1] =
+      WINDOW_CENTER_Y - 0.9 + Math.pow(random(0, 1), 0.75) * 2.6;
+    positions[index * 3 + 2] = random(-2.35, 2.35);
+  }
+  return positions;
+}
+
+// Fog-and-droplets texture layered over the glass at night (condensation).
+function createCondensationTexture(seed) {
+  if (typeof document === "undefined") return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 256;
+  const context = canvas.getContext("2d");
+  if (!context) return null;
+
+  const random = createSeededRandom(seed);
+  context.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Fog band, heavier toward the bottom edge like breath on cold glass.
+  const fog = context.createLinearGradient(0, 0, 0, canvas.height);
+  fog.addColorStop(0, "rgba(255,255,255,0.10)");
+  fog.addColorStop(0.55, "rgba(255,255,255,0.16)");
+  fog.addColorStop(1, "rgba(255,255,255,0.34)");
+  context.fillStyle = fog;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (let index = 0; index < 90; index += 1) {
+    const x = random(0, canvas.width);
+    const y = random(0, canvas.height);
+    const radius = random(1.2, 4.2);
+    const droplet = context.createRadialGradient(x, y, 0, x, y, radius);
+    droplet.addColorStop(0, `rgba(255,255,255,${random(0.16, 0.34).toFixed(3)})`);
+    droplet.addColorStop(1, "rgba(255,255,255,0)");
+    context.fillStyle = droplet;
+    context.beginPath();
+    context.arc(x, y, radius, 0, Math.PI * 2);
+    context.fill();
+  }
+
+  const texture = new CanvasTexture(canvas);
+  texture.wrapS = RepeatWrapping;
+  texture.wrapT = RepeatWrapping;
+  texture.needsUpdate = true;
+  return texture;
 }
 
 function smoothStep(edge0, edge1, value) {
   const width = Math.max(0.0001, edge1 - edge0);
   return smooth01((value - edge0) / width);
-}
-
-function getTwilightFactor(sunHeight) {
-  const horizonBand = 0.9;
-  const normalized = 1 - Math.abs(sunHeight) / horizonBand;
-  return smooth01(normalized);
-}
-
-function getDayBlend(worldHour, startHour, endHour) {
-  const hour = ((worldHour % 24) + 24) % 24;
-  if (hour <= startHour || hour >= endHour) return 0;
-  const midpoint = (startHour + endHour) * 0.5;
-  if (hour <= midpoint) {
-    return smooth01((hour - startHour) / Math.max(0.001, midpoint - startHour));
-  }
-  return smooth01((endHour - hour) / Math.max(0.001, endHour - midpoint));
-}
-
-function getMoonPhaseFactor(now = new Date()) {
-  const synodicMonthDays = 29.530588;
-  const knownNewMoonUtc = Date.UTC(2000, 0, 6, 18, 14, 0);
-  const daysSinceKnownNewMoon = (now.getTime() - knownNewMoonUtc) / 86400000;
-  const cycleDay =
-    ((daysSinceKnownNewMoon % synodicMonthDays) + synodicMonthDays) %
-    synodicMonthDays;
-  const normalizedPhase = cycleDay / synodicMonthDays;
-  const illumination = 0.5 - 0.5 * Math.cos(normalizedPhase * Math.PI * 2);
-  return 0.35 + illumination * 0.65;
 }
 
 function getNightLightingStrength(worldHour) {
@@ -515,6 +614,54 @@ const RoomShellComponent = function RoomShell({
   const sideWindowColorScratch = useMemo(() => new Color(), []);
   const cloudsEnabled = (sceneQuality?.enableClouds ?? true) && SHOW_CLOUDS;
   const skyBodiesEnabled = (sceneQuality?.enableSkyBodies ?? true) && SHOW_SKY_BODIES;
+  const starsEnabled = (sceneQuality?.enableStars ?? true) && SHOW_STARS;
+  const starMeshRefs = useRef([]);
+  const starMaterialRefs = useRef([]);
+  const dust = useMemo(() => createDustMotes(), []);
+  const dustPointsRef = useRef(null);
+  const dustMaterialRef = useRef(null);
+  // Rain starts from the env flag and toggles at runtime with the W key.
+  const [rainActive, setRainActive] = useState(SHOW_RAIN);
+  const rain = useMemo(() => createRainDrops(), []);
+  const rainRipples = useMemo(() => createRainRipples(), []);
+  const rainGroupRef = useRef(null);
+  const rainLinesRef = useRef(null);
+  const rainRippleMeshRefs = useRef([]);
+  const condensationTexture = useMemo(() => createCondensationTexture(15737), []);
+  const condensationMaterialRef = useRef(null);
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.defaultPrevented || event.repeat) return;
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) || target.isContentEditable)
+      ) {
+        return;
+      }
+      if (event.key.toLowerCase() === "w") {
+        setRainActive((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      condensationTexture?.dispose();
+    };
+  }, [condensationTexture]);
+  const starPositionsByLayer = useMemo(
+    () =>
+      starsEnabled
+        ? STAR_LAYERS.map((layer, index) =>
+            createStarPositions(STAR_FIELD_SEED + index * 97, layer.count),
+          )
+        : [],
+    [starsEnabled],
+  );
   const nearCloudTexture = useMemo(
     () => (cloudsEnabled ? createCloudTexture(55711) : null),
     [cloudsEnabled],
@@ -649,6 +796,83 @@ const RoomShellComponent = function RoomShell({
       const pulse = 1 + Math.sin(elapsedSeconds * 0.3) * 0.08;
       cityGlowRef.current.intensity = nightLightingStrength * 0.4 * pulse;
     }
+    // Dust motes drift up through the window light while the sun is out.
+    const dustStrength = smoothStep(0.3, 0.55, dayFactor);
+    if (dustPointsRef.current && dustMaterialRef.current) {
+      if (dustStrength <= 0.001) {
+        dustPointsRef.current.visible = false;
+      } else {
+        dustPointsRef.current.visible = true;
+        dustMaterialRef.current.opacity = 0.16 * dustStrength;
+        const attribute = dustPointsRef.current.geometry.attributes.position;
+        const array = attribute.array;
+        for (let index = 0; index < DUST_MOTE_COUNT; index += 1) {
+          const mote = dust.motes[index];
+          let y = array[index * 3 + 1] + mote.riseSpeed * delta;
+          if (y > DUST_MAX_Y) y = DUST_MIN_Y;
+          array[index * 3 + 1] = y;
+          array[index * 3] =
+            mote.x + Math.sin(elapsedSeconds * mote.swayFreq + mote.phase) * mote.swayAmp;
+          array[index * 3 + 2] =
+            mote.z +
+            Math.cos(elapsedSeconds * mote.swayFreq * 0.8 + mote.phase) * mote.swayAmp;
+        }
+        attribute.needsUpdate = true;
+      }
+    }
+
+    // Rain: advance each drop downward and wrap; pulse the sill ripples.
+    if (rainGroupRef.current) {
+      rainGroupRef.current.visible = rainActive;
+      if (rainActive && rainLinesRef.current) {
+        const attribute = rainLinesRef.current.geometry.attributes.position;
+        const array = attribute.array;
+        for (let index = 0; index < RAIN_DROP_COUNT; index += 1) {
+          const drop = rain.drops[index];
+          let bottom = array[index * 6 + 1] - drop.speed * delta;
+          if (bottom < RAIN_MIN_Y) bottom = RAIN_MAX_Y - drop.length;
+          array[index * 6 + 1] = bottom;
+          array[index * 6 + 4] = bottom + drop.length;
+        }
+        attribute.needsUpdate = true;
+
+        rainRipples.forEach((ripple, index) => {
+          const mesh = rainRippleMeshRefs.current[index];
+          if (!mesh) return;
+          const t = (elapsedSeconds / RAIN_RIPPLE_PERIOD_S + ripple.phase) % 1;
+          const scale = 0.25 + t * 1.4;
+          mesh.scale.set(scale, scale, scale);
+          mesh.material.opacity = 0.3 * (1 - t);
+        });
+      }
+    }
+
+    // Condensation fogs the glass as the night cools, drifting very slowly.
+    if (condensationMaterialRef.current) {
+      condensationMaterialRef.current.opacity =
+        smoothStep(0.35, 0.75, nightFactor) * 0.22;
+      if (condensationMaterialRef.current.map) {
+        condensationMaterialRef.current.map.offset.y =
+          (elapsedSeconds * 0.0015) % 1;
+      }
+    }
+
+    // Stars fade in once night is properly underway and twinkle per layer.
+    const starStrength = starsEnabled ? smoothStep(0.3, 0.6, nightFactor) : 0;
+    STAR_LAYERS.forEach((layer, index) => {
+      const mesh = starMeshRefs.current[index];
+      const material = starMaterialRefs.current[index];
+      if (!mesh || !material) return;
+      if (starStrength <= 0.001) {
+        mesh.visible = false;
+        return;
+      }
+      mesh.visible = true;
+      const twinkle =
+        0.72 + 0.28 * Math.sin(elapsedSeconds * layer.twinkleSpeed + layer.phase);
+      material.opacity = layer.baseOpacity * starStrength * twinkle;
+    });
+
     if (nearCloudMaterialRef.current?.map) {
       nearCloudMaterialRef.current.map.offset.x =
         (nearCloudMaterialRef.current.map.offset.x + delta * 0.008) % 1;
@@ -904,6 +1128,74 @@ const RoomShellComponent = function RoomShell({
         </mesh>
       </group>
 
+      <group ref={rainGroupRef} visible={false}>
+        <lineSegments ref={rainLinesRef} renderOrder={5}>
+          <bufferGeometry>
+            <bufferAttribute attach="attributes-position" args={[rain.positions, 3]} />
+          </bufferGeometry>
+          <lineBasicMaterial
+            color="#c3d8f2"
+            depthWrite={false}
+            opacity={0.6}
+            transparent
+          />
+        </lineSegments>
+        {rainRipples.map((ripple, index) => (
+          <mesh
+            key={`rain-ripple-${ripple.phase}`}
+            ref={(node) => {
+              rainRippleMeshRefs.current[index] = node;
+            }}
+            position={[ripple.x, SILL_TOP_Y, ripple.z]}
+            renderOrder={5}
+            rotation={[-Math.PI / 2, 0, 0]}
+          >
+            <ringGeometry args={[0.008, 0.013, 16]} />
+            <meshBasicMaterial
+              color="#cfe2ff"
+              depthWrite={false}
+              opacity={0}
+              side={DoubleSide}
+              transparent
+            />
+          </mesh>
+        ))}
+      </group>
+
+      {condensationTexture ? (
+        <mesh
+          position={[WINDOW_GLASS_X + 0.006, WINDOW_CENTER_Y, WINDOW_CENTER_Z]}
+          renderOrder={6}
+          rotation={[0, Math.PI / 2, 0]}
+        >
+          <planeGeometry args={[WINDOW_WIDTH, WINDOW_HEIGHT]} />
+          <meshBasicMaterial
+            ref={condensationMaterialRef}
+            depthWrite={false}
+            map={condensationTexture}
+            opacity={0}
+            transparent
+          />
+        </mesh>
+      ) : null}
+
+      <points ref={dustPointsRef} renderOrder={4} visible={false}>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[dust.positions, 3]} />
+        </bufferGeometry>
+        <pointsMaterial
+          ref={dustMaterialRef}
+          blending={AdditiveBlending}
+          color="#ffe9c9"
+          depthWrite={false}
+          opacity={0}
+          size={0.016}
+          sizeAttenuation
+          toneMapped={false}
+          transparent
+        />
+      </points>
+
       <group position={[OUTSIDE_SCENE_X, 0, WINDOW_CENTER_Z]}>
         <mesh
           position={[SKY_BACKDROP_X, WINDOW_CENTER_Y + 0.14, 0]}
@@ -916,6 +1208,38 @@ const RoomShellComponent = function RoomShell({
             map={textures.skyline}
           />
         </mesh>
+        {starsEnabled
+          ? STAR_LAYERS.map((layer, index) => (
+              <points
+                key={`star-layer-${layer.phase}`}
+                ref={(node) => {
+                  starMeshRefs.current[index] = node;
+                }}
+                renderOrder={1}
+                visible={false}
+              >
+                <bufferGeometry>
+                  <bufferAttribute
+                    attach="attributes-position"
+                    args={[starPositionsByLayer[index], 3]}
+                  />
+                </bufferGeometry>
+                <pointsMaterial
+                  ref={(node) => {
+                    starMaterialRefs.current[index] = node;
+                  }}
+                  blending={AdditiveBlending}
+                  color="#dbe7ff"
+                  depthWrite={false}
+                  opacity={0}
+                  size={layer.size}
+                  sizeAttenuation
+                  toneMapped={false}
+                  transparent
+                />
+              </points>
+            ))
+          : null}
         {cloudsEnabled && farCloudTexture ? (
           <mesh
             position={[FAR_CLOUD_X, WINDOW_CENTER_Y + 0.76, -0.2]}

@@ -1,12 +1,14 @@
 import { Center, Text3D } from "@react-three/drei";
-import { useEffect, useMemo } from "react";
-import { CanvasTexture } from "three";
+import { useFrame } from "@react-three/fiber";
+import { useEffect, useMemo, useRef } from "react";
+import { CanvasTexture, DoubleSide, Vector3 } from "three";
 import helvetikerBold from "three/examples/fonts/helvetiker_bold.typeface.json";
 import { DESK_TOP_Y } from "../../../../constants/deskConstants";
 
 const NOTEBOOK_WIDTH = 0.52 * 0.7;
 const NOTEBOOK_HEIGHT = 0.042;
 const NOTEBOOK_DEPTH = 0.68 * 0.7;
+const PAGE_FLAP_SIZE = 0.075;
 
 function createCoverTexture() {
   const canvas = document.createElement("canvas");
@@ -89,6 +91,20 @@ function createPaperTexture() {
 export function Notebook() {
   const coverTexture = useMemo(() => createCoverTexture(), []);
   const paperTexture = useMemo(() => createPaperTexture(), []);
+  const pageFlapRef = useRef(null);
+  // Axis through the flap's inner corner; rotating about it lifts the outer
+  // corner up and back, like a page waiting to be turned.
+  const pageCurlAxis = useMemo(() => new Vector3(-1, 0, 1).normalize(), []);
+
+  useFrame((state) => {
+    if (!pageFlapRef.current) return;
+    const breath = 0.5 + 0.5 * Math.sin(state.clock.getElapsedTime() * 0.9);
+    const eased = breath * breath * (3 - 2 * breath);
+    pageFlapRef.current.quaternion.setFromAxisAngle(
+      pageCurlAxis,
+      0.06 + eased * 0.34,
+    );
+  });
 
   useEffect(() => {
     return () => {
@@ -112,6 +128,20 @@ export function Notebook() {
         <meshStandardMaterial attach="material-4" color="#f0ece0" roughness={0.9} />
         <meshStandardMaterial attach="material-5" color="#f0ece0" roughness={0.9} />
       </mesh>
+
+      <group
+        ref={pageFlapRef}
+        position={[
+          NOTEBOOK_WIDTH * 0.5 - PAGE_FLAP_SIZE,
+          NOTEBOOK_HEIGHT * 0.5 + 0.0015,
+          NOTEBOOK_DEPTH * 0.5 - PAGE_FLAP_SIZE,
+        ]}
+      >
+        <mesh position={[PAGE_FLAP_SIZE * 0.5, 0, PAGE_FLAP_SIZE * 0.5]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[PAGE_FLAP_SIZE, PAGE_FLAP_SIZE]} />
+          <meshStandardMaterial color="#faf6ee" roughness={0.9} side={DoubleSide} />
+        </mesh>
+      </group>
 
       {Array.from({ length: 22 }).map((_, index) => {
         const z =

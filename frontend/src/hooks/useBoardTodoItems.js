@@ -5,7 +5,6 @@ import { useStartupData } from "../store/StartupDataStore";
 import { apiRequest } from "../utils/apiClient";
 
 const EDITABLE_FIELDS = new Set(["title", "difficulty", "status"]);
-const TASK_SCORE_STORAGE_PREFIX = "focusdesk.task-score";
 const OPTIMISTIC_TASK_PREFIX = "optimistic-task-";
 
 function normalizeDifficulty(value) {
@@ -36,45 +35,6 @@ function createItemId() {
   return `task-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function toNonNegativeInteger(value, fallback = 0) {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return fallback;
-  return Math.max(0, Math.floor(parsed));
-}
-
-function getTaskScoreStorageKey(user) {
-  if (!user) return "";
-  const identity = user.id ?? user.username;
-  if (identity === undefined || identity === null || identity === "") return "";
-  return `${TASK_SCORE_STORAGE_PREFIX}.${identity}`;
-}
-
-function readTaskScoreSnapshot(storageKey) {
-  if (!storageKey) return null;
-  try {
-    const raw = window.localStorage.getItem(storageKey);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") return null;
-    return {
-      doneDeletedTasks: toNonNegativeInteger(parsed.doneDeletedTasks, 0),
-      totalCreatedTasks: toNonNegativeInteger(parsed.totalCreatedTasks, 0),
-      earnedTokens: toNonNegativeInteger(parsed.earnedTokens, 0),
-    };
-  } catch {
-    return null;
-  }
-}
-
-function writeTaskScoreSnapshot(storageKey, snapshot) {
-  if (!storageKey) return;
-  try {
-    window.localStorage.setItem(storageKey, JSON.stringify(snapshot));
-  } catch {
-    // Ignore private mode/localStorage restrictions.
-  }
-}
-
 function isOptimisticTaskId(taskId) {
   return typeof taskId === "string" && taskId.startsWith(OPTIMISTIC_TASK_PREFIX);
 }
@@ -96,7 +56,6 @@ export function useBoardTodoItems() {
   const [totalCreatedTasks, setTotalCreatedTasks] = useState(0);
   const [earnedTokens, setEarnedTokens] = useState(0);
   const [isHydrating, setIsHydrating] = useState(true);
-  const taskScoreStorageKey = useMemo(() => getTaskScoreStorageKey(user), [user]);
 
   useEffect(() => {
     if (user && !startupReady) return; // wait for startup fetch before loading
@@ -106,54 +65,40 @@ export function useBoardTodoItems() {
         setIsHydrating(true);
         try {
           const data = startupData ?? await apiRequest("/api/tasks");
+          const stats = startupData
+            ? startupData.taskStats
+            : await apiRequest("/api/tasks/stats").then((res) => res.stats).catch(() => null);
           if (!isMounted) return;
           const normalizedItems = (data.tasks || [])
             .map(normalizeItem)
             .filter((item) => item && item.status !== "Done");
           setItems(normalizedItems);
-          const visibleTaskCount = normalizedItems.length;
-          const snapshot = readTaskScoreSnapshot(taskScoreStorageKey);
-          const nextDoneDeletedTasks = snapshot?.doneDeletedTasks ?? 0;
-          const nextTotalCreatedTasks = Math.max(visibleTaskCount, snapshot?.totalCreatedTasks ?? visibleTaskCount);
-          const nextEarnedTokens = snapshot?.earnedTokens ?? 0;
-          setDoneDeletedTasks(nextDoneDeletedTasks);
-          setTotalCreatedTasks(nextTotalCreatedTasks);
-          setEarnedTokens(nextEarnedTokens);
-          writeTaskScoreSnapshot(taskScoreStorageKey, {
-            doneDeletedTasks: nextDoneDeletedTasks,
-            totalCreatedTasks: nextTotalCreatedTasks,
-            earnedTokens: nextEarnedTokens,
-          });
+          setDoneDeletedTasks(stats?.doneTasks ?? 0);
+          setTotalCreatedTasks(Math.max(normalizedItems.length, stats?.createdTasks ?? 0));
+          setEarnedTokens(stats?.earnedTokens ?? 0);
         } catch {
           if (!isMounted) return;
           setItems([]);
           setDoneDeletedTasks(0);
           setTotalCreatedTasks(0);
         } finally {
-          if (!isMounted) return;
-          setIsHydrating(false);
+          if (isMounted) {
+            setIsHydrating(false);
+          }
         }
       } else {
         setIsHydrating(true);
         setItems([]);
         setDoneDeletedTasks(0);
         setTotalCreatedTasks(0);
+        setEarnedTokens(0);
       }
     }
     load();
     return () => {
       isMounted = false;
     };
-  }, [taskScoreStorageKey, user, startupReady]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (!taskScoreStorageKey || !user) return;
-    writeTaskScoreSnapshot(taskScoreStorageKey, {
-      doneDeletedTasks,
-      totalCreatedTasks: Math.max(items.length, totalCreatedTasks),
-      earnedTokens,
-    });
-  }, [doneDeletedTasks, earnedTokens, items.length, taskScoreStorageKey, totalCreatedTasks, user]);
+  }, [user, startupReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const deleteItem = useCallback(
     async (idToDelete) => {
@@ -185,6 +130,8 @@ export function useBoardTodoItems() {
       if (!user) return;
 
       // Marking a task Done auto-removes it and counts toward the score.
+      // The backend deletes the row and owns the score counters; the local
+      // increments below are optimistic and reconciled from its response.
       if (fieldName === "status" && value === "Done") {
         const completedItem = items.find((item) => item.id === idToUpdate);
         const tokensForTask = DIFFICULTY_XP[completedItem?.difficulty] ?? 25;
@@ -193,9 +140,17 @@ export function useBoardTodoItems() {
         setEarnedTokens((prev) => prev + tokensForTask);
         if (!isOptimisticTaskId(idToUpdate)) {
           try {
-            await apiRequest(`/api/tasks/${idToUpdate}`, { method: "DELETE" });
+            const data = await apiRequest(`/api/tasks/${idToUpdate}`, {
+              method: "PATCH",
+              body: { status: "Done" },
+            });
+            if (data?.stats) {
+              setDoneDeletedTasks(data.stats.doneTasks);
+              setEarnedTokens(data.stats.earnedTokens);
+              setTotalCreatedTasks((prev) => Math.max(prev, data.stats.createdTasks));
+            }
           } catch {
-            // Keep removed from UI even if the delete request fails.
+            // Keep removed from UI even if the request fails.
           }
         }
         return;
@@ -301,11 +256,22 @@ export function useBoardTodoItems() {
     setDraggedItemId(null);
   }, []);
 
-  const resetTaskScore = useCallback(() => {
+  const resetTaskScore = useCallback(async () => {
     setDoneDeletedTasks(0);
     setTotalCreatedTasks(items.length);
     setEarnedTokens(0);
-  }, [items.length]);
+    if (!user) return;
+    try {
+      const data = await apiRequest("/api/tasks/stats/reset", { method: "POST" });
+      if (data?.stats) {
+        setDoneDeletedTasks(data.stats.doneTasks);
+        setTotalCreatedTasks(Math.max(items.length, data.stats.createdTasks));
+        setEarnedTokens(data.stats.earnedTokens);
+      }
+    } catch {
+      // The optimistic local reset stands; server will resync on next load.
+    }
+  }, [items.length, user]);
 
   return useMemo(
     () => ({

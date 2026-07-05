@@ -1,12 +1,18 @@
 import { useFrame, useThree } from "@react-three/fiber";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Color, Raycaster, Vector2 } from "three";
 import { DeskSetup } from "./components/DeskSetup";
+import { getLampTargetStrength } from "./utils/lampSchedule";
 import { RoomShell } from "./components/RoomShell";
 import { SceneCss3DRenderer } from "./components/Css3DLayer";
 import { SeatedCameraControls } from "./components/SeatedCameraControls";
 import { WallDecor } from "./components/WallDecor";
 import { useFocusTextures } from "../../hooks/useFocusTextures";
+import {
+  getDayBlend,
+  getMoonPhaseFactor,
+  getTwilightFactor,
+} from "./utils/lightingMath";
 
 const DAY_CYCLE_MINUTES = Number(import.meta.env.VITE_DAY_CYCLE_MINUTES);
 const SIMULATED_DAY_CYCLE_SECONDS = Number.isFinite(DAY_CYCLE_MINUTES) && DAY_CYCLE_MINUTES > 0
@@ -23,6 +29,11 @@ function normalizeHour(hour) {
 }
 
 function getWorldHour(elapsedSeconds, initialWorldHour) {
+  // Dev-only escape hatch for visual testing: freeze the world clock at a
+  // chosen hour via `window.__forceWorldHour = 22.5` in the console.
+  if (import.meta.env.DEV && typeof window.__forceWorldHour === "number") {
+    return normalizeHour(window.__forceWorldHour);
+  }
   if (SIMULATED_DAY_CYCLE_SECONDS > 0) {
     const simulatedHours = (elapsedSeconds / SIMULATED_DAY_CYCLE_SECONDS) * 24;
     return normalizeHour(initialWorldHour + simulatedHours);
@@ -40,41 +51,6 @@ function toClockDisplay(worldHour) {
     minute,
     time: `${String(hour12).padStart(2, "0")}:${String(minute).padStart(2, "0")}`,
   };
-}
-
-function clamp01(value) {
-  return Math.min(1, Math.max(0, value));
-}
-
-function smooth01(value) {
-  const t = clamp01(value);
-  return t * t * t * (t * (t * 6 - 15) + 10);
-}
-
-function getTwilightFactor(sunHeight) {
-  const horizonBand = 0.9;
-  const normalized = 1 - Math.abs(sunHeight) / horizonBand;
-  return smooth01(normalized);
-}
-
-function getDayBlend(worldHour, startHour, endHour) {
-  const hour = ((worldHour % 24) + 24) % 24;
-  if (hour <= startHour || hour >= endHour) return 0;
-  const midpoint = (startHour + endHour) * 0.5;
-  if (hour <= midpoint) {
-    return smooth01((hour - startHour) / Math.max(0.001, midpoint - startHour));
-  }
-  return smooth01((endHour - hour) / Math.max(0.001, endHour - midpoint));
-}
-
-function getMoonPhaseFactor(now = new Date()) {
-  const synodicMonthDays = 29.530588;
-  const knownNewMoonUtc = Date.UTC(2000, 0, 6, 18, 14, 0);
-  const daysSinceKnownNewMoon = (now.getTime() - knownNewMoonUtc) / 86400000;
-  const cycleDay = ((daysSinceKnownNewMoon % synodicMonthDays) + synodicMonthDays) % synodicMonthDays;
-  const normalizedPhase = cycleDay / synodicMonthDays;
-  const illumination = 0.5 - 0.5 * Math.cos(normalizedPhase * Math.PI * 2);
-  return 0.35 + illumination * 0.65;
 }
 
 function isEditableTarget(target) {
@@ -115,6 +91,7 @@ function RoomInteractionHotkeys({
   onToggleBoardPopup,
   onToggleCalendarPopup,
   onToggleStatsPopup,
+  onToggleLamp,
   onToggleMusic,
   onSelectMusicSlot,
   keybindsEnabled = true,
@@ -130,6 +107,7 @@ function RoomInteractionHotkeys({
       !onToggleBoardPopup &&
       !onToggleCalendarPopup &&
       !onToggleStatsPopup &&
+      !onToggleLamp &&
       !onToggleMusic &&
       !onOpenCalendarPopup &&
       !onOpenStatsPopup
@@ -161,6 +139,14 @@ function RoomInteractionHotkeys({
       if (radioHitbox && onToggleMusic) {
         if (raycaster.intersectObject(radioHitbox, true).length > 0) {
           onToggleMusic();
+          return;
+        }
+      }
+
+      const lampHitbox = scene.getObjectByName("desk-lamp-hitbox");
+      if (lampHitbox && onToggleLamp) {
+        if (raycaster.intersectObject(lampHitbox, true).length > 0) {
+          onToggleLamp();
           return;
         }
       }
@@ -200,6 +186,7 @@ function RoomInteractionHotkeys({
     onOpenCalendarPopup,
     onOpenStatsPopup,
     onToggleBoardPopup,
+    onToggleLamp,
     onToggleMusic,
     pointer,
     raycaster,
@@ -212,6 +199,7 @@ function RoomInteractionHotkeys({
       !onToggleBoardPopup &&
       !onToggleCalendarPopup &&
       !onToggleStatsPopup &&
+      !onToggleLamp &&
       !onToggleMusic &&
       !onSelectMusicSlot
     ) {
@@ -229,6 +217,7 @@ function RoomInteractionHotkeys({
       }
       const key = event.key.toLowerCase();
       if (key === "r" && onToggleMusic) { event.preventDefault(); onToggleMusic(); return; }
+      if (key === "l" && onToggleLamp) { event.preventDefault(); onToggleLamp(); return; }
       if (key === "t" && onToggleBoardPopup) { event.preventDefault(); onToggleBoardPopup(); return; }
       if (key === "s" && onToggleStatsPopup) { event.preventDefault(); onToggleStatsPopup(); return; }
       if (key === "c" && onToggleCalendarPopup) { event.preventDefault(); onToggleCalendarPopup(); }
@@ -243,6 +232,7 @@ function RoomInteractionHotkeys({
     onToggleBoardPopup,
     onToggleCalendarPopup,
     onToggleStatsPopup,
+    onToggleLamp,
     onToggleMusic,
     onSelectMusicSlot,
   ]);
@@ -278,6 +268,14 @@ export function FocusRoomScene({
   const lastDisplayedMinuteRef = useRef(Math.floor((initialWorldHour - Math.floor(initialWorldHour)) * 60));
   const [clockDisplay, setClockDisplay] = useState(() => toClockDisplay(initialWorldHour));
   const moonPhaseFactor = useMemo(() => getMoonPhaseFactor(), []);
+  // null = lamp follows sunset/sunrise automatically; true/false = user override.
+  const [lampOverride, setLampOverride] = useState(null);
+  const toggleLamp = useCallback(() => {
+    setLampOverride((prev) => {
+      if (prev != null) return !prev;
+      return getLampTargetStrength(worldHourRef.current) < 0.5;
+    });
+  }, []);
 
   const ambientLightRef = useRef(null);
   const hemisphereLightRef = useRef(null);
@@ -526,6 +524,7 @@ export function FocusRoomScene({
         <DeskSetup
           clockAmpm={clockDisplay.ampm}
           clockTime={clockDisplay.time}
+          isLampOn={lampOverride}
           isRadioOn={isMusicPlaying}
           sceneQuality={sceneQuality}
           worldHourRef={worldHourRef}
@@ -548,6 +547,7 @@ export function FocusRoomScene({
         onToggleBoardPopup={onToggleBoardPopup}
         onToggleCalendarPopup={onToggleCalendarPopup}
         onToggleStatsPopup={onToggleStatsPopup}
+        onToggleLamp={toggleLamp}
         onToggleMusic={onToggleMusic}
         onSelectMusicSlot={onSelectMusicSlot}
         keybindsEnabled={hotkeysEnabled}

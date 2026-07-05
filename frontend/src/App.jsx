@@ -13,8 +13,6 @@ import { AuthModal } from "./components/AuthModal";
 import { WebGLErrorBoundary } from "./components/WebGLErrorBoundary";
 import { SettingsDrawer } from "./components/SettingsDrawer";
 import { SettingsButton } from "./components/SettingsButton";
-import dayIcon from "./assets/lofideskiconday.png";
-import nightIcon from "./assets/lofideskiconnight.png";
 import {
   DAY_END_HOUR,
   DAY_START_HOUR,
@@ -316,7 +314,7 @@ function App() {
 
   useEffect(() => {
     const isDay = worldClockDisplay.hour24 >= DAY_START_HOUR && worldClockDisplay.hour24 < DAY_END_HOUR;
-    const iconHref = isDay ? dayIcon : nightIcon;
+    const iconHref = isDay ? "/lofideskiconday.png" : "/lofideskiconnight.png";
     let favicon = document.querySelector("#app-favicon");
     if (!favicon) {
       favicon = document.querySelector("link[rel='icon']");
