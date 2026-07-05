@@ -140,6 +140,14 @@ export default function FocusRoomExperience({
     <Canvas
       dpr={sceneQuality.dpr}
       frameloop="demand"
+      shadows={sceneQuality.enableShadows ? "soft" : false}
+      onCreated={({ gl, scene }) => {
+        if (import.meta.env.DEV) {
+          // Dev-only handles for visual debugging from the browser console.
+          window.__focusGL = gl;
+          window.__focusScene = scene;
+        }
+      }}
       gl={{
         alpha: false,
         antialias: sceneQuality.antialias,

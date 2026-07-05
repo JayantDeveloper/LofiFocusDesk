@@ -229,9 +229,11 @@ const SKY_PLANE_WIDTH = 4.8;
 const SKY_PLANE_HEIGHT = 3.6;
 const ORBIT_CENTER_Y = WINDOW_CENTER_Y + 1.4;
 const ORBIT_RADIUS_Y = 1.1;
-const SHOW_SKY_BODIES = import.meta.env.VITE_SHOW_SKY_BODIES === "1";
-const SHOW_CLOUDS = import.meta.env.VITE_SHOW_CLOUDS === "1";
-const SHOW_STARS = import.meta.env.VITE_SHOW_STARS === "1";
+// Sky effects are on by default (still gated by the quality profile); set the
+// env var to "0" to opt out during development.
+const SHOW_SKY_BODIES = import.meta.env.VITE_SHOW_SKY_BODIES !== "0";
+const SHOW_CLOUDS = import.meta.env.VITE_SHOW_CLOUDS !== "0";
+const SHOW_STARS = import.meta.env.VITE_SHOW_STARS !== "0";
 const SHOW_RAIN = import.meta.env.VITE_SHOW_RAIN === "1";
 
 const RAIN_DROP_COUNT = 130;
@@ -359,21 +361,21 @@ function createCloudTexture(seed) {
   return texture;
 }
 
-const DUST_MOTE_COUNT = 80;
+const DUST_MOTE_COUNT = 45;
 const DUST_MOTE_SEED = 61873;
-const DUST_MIN_Y = WINDOW_CENTER_Y - 0.8;
-const DUST_MAX_Y = WINDOW_CENTER_Y + 0.55;
+const DUST_MIN_Y = WINDOW_CENTER_Y - 0.55;
+const DUST_MAX_Y = WINDOW_CENTER_Y + 0.35;
 
-// Floating dust in the daylight beam: seeded start positions plus per-mote
-// drift parameters, all mutated in place each frame.
+// Floating dust confined to the sunbeam right at the window: seeded start
+// positions plus per-mote drift parameters, mutated in place each frame.
 function createDustMotes() {
   const random = createSeededRandom(DUST_MOTE_SEED);
   const positions = new Float32Array(DUST_MOTE_COUNT * 3);
   const motes = [];
   for (let index = 0; index < DUST_MOTE_COUNT; index += 1) {
-    const x = WINDOW_FRAME_X + random(0.12, 1.5);
+    const x = WINDOW_FRAME_X + random(0.1, 0.85);
     const y = random(DUST_MIN_Y, DUST_MAX_Y);
-    const z = WINDOW_CENTER_Z + random(-0.62, 0.62);
+    const z = WINDOW_CENTER_Z + random(-0.8, 0.8);
     positions[index * 3] = x;
     positions[index * 3 + 1] = y;
     positions[index * 3 + 2] = z;
@@ -524,7 +526,9 @@ function CityBuilding({ building, frontWindowMaterial, sideWindowMaterial }) {
 
   return (
     <group position={[building.x, 0, building.z]}>
-      <mesh castShadow receiveShadow position={[0, scaledHeight * 0.5, 0]}>
+      {/* Backdrop buildings never cast into the room — sunlight must pour
+          through the window unobstructed. */}
+      <mesh receiveShadow position={[0, scaledHeight * 0.5, 0]}>
         <boxGeometry args={[scaledDepth, scaledHeight, scaledWidth]} />
         <meshLambertMaterial color={building.color} />
         <group position={[0, -scaledHeight * 0.5, 0]}>
@@ -545,7 +549,6 @@ function CityBuilding({ building, frontWindowMaterial, sideWindowMaterial }) {
         </group>
       </mesh>
       <mesh
-        castShadow
         receiveShadow
         position={[0, scaledHeight + building.roof * 0.5, 0]}
       >
@@ -556,7 +559,6 @@ function CityBuilding({ building, frontWindowMaterial, sideWindowMaterial }) {
       </mesh>
       {building.antenna ? (
         <mesh
-          castShadow
           position={[
             0,
             scaledHeight + building.roof + building.antenna * 0.5,
@@ -796,14 +798,18 @@ const RoomShellComponent = function RoomShell({
       const pulse = 1 + Math.sin(elapsedSeconds * 0.3) * 0.08;
       cityGlowRef.current.intensity = nightLightingStrength * 0.4 * pulse;
     }
-    // Dust motes drift up through the window light while the sun is out.
-    const dustStrength = smoothStep(0.3, 0.55, dayFactor);
+    // Dust motes drift only inside the visible sunbeam, matching its strength
+    // so they never float free of the light shaft.
+    const dustStrength = isSunVisible
+      ? Math.min(1, Math.pow(dayFactor, 1.25) + twilightFactor * 0.38) *
+        smoothStep(0.25, 0.5, dayFactor)
+      : 0;
     if (dustPointsRef.current && dustMaterialRef.current) {
       if (dustStrength <= 0.001) {
         dustPointsRef.current.visible = false;
       } else {
         dustPointsRef.current.visible = true;
-        dustMaterialRef.current.opacity = 0.16 * dustStrength;
+        dustMaterialRef.current.opacity = 0.1 * dustStrength;
         const attribute = dustPointsRef.current.geometry.attributes.position;
         const array = attribute.array;
         for (let index = 0; index < DUST_MOTE_COUNT; index += 1) {
@@ -1008,7 +1014,7 @@ const RoomShellComponent = function RoomShell({
       </mesh>
 
       <group>
-        <mesh receiveShadow position={[LEFT_WALL_X, 2.71, 0]}>
+        <mesh castShadow receiveShadow position={[LEFT_WALL_X, 2.71, 0]}>
           <boxGeometry args={[0.2, 1.38, 7.4]} />
           <meshStandardMaterial
             color="#d8c9b8"
@@ -1016,7 +1022,7 @@ const RoomShellComponent = function RoomShell({
             roughness={0.94}
           />
         </mesh>
-        <mesh receiveShadow position={[LEFT_WALL_X, 0.435, 0]}>
+        <mesh castShadow receiveShadow position={[LEFT_WALL_X, 0.435, 0]}>
           <boxGeometry args={[0.2, 0.87, 7.4]} />
           <meshStandardMaterial
             color="#d8c9b8"
@@ -1024,7 +1030,7 @@ const RoomShellComponent = function RoomShell({
             roughness={0.94}
           />
         </mesh>
-        <mesh receiveShadow position={[LEFT_WALL_X, WINDOW_CENTER_Y, -2.6825]}>
+        <mesh castShadow receiveShadow position={[LEFT_WALL_X, WINDOW_CENTER_Y, -2.6825]}>
           <boxGeometry args={[0.2, WINDOW_HEIGHT, 2.035]} />
           <meshStandardMaterial
             color="#d8c9b8"
@@ -1032,7 +1038,7 @@ const RoomShellComponent = function RoomShell({
             roughness={0.94}
           />
         </mesh>
-        <mesh receiveShadow position={[LEFT_WALL_X, WINDOW_CENTER_Y, 1.8925]}>
+        <mesh castShadow receiveShadow position={[LEFT_WALL_X, WINDOW_CENTER_Y, 1.8925]}>
           <boxGeometry args={[0.2, WINDOW_HEIGHT, 3.615]} />
           <meshStandardMaterial
             color="#d8c9b8"
@@ -1189,7 +1195,7 @@ const RoomShellComponent = function RoomShell({
           color="#ffe9c9"
           depthWrite={false}
           opacity={0}
-          size={0.016}
+          size={0.012}
           sizeAttenuation
           toneMapped={false}
           transparent
@@ -1289,7 +1295,6 @@ const RoomShellComponent = function RoomShell({
                 <sphereGeometry args={[0.17, 14, 14]} />
                 <meshStandardMaterial
                   color="#ffe8b2"
-                  depthTest={false}
                   emissive="#ffd28a"
                   emissiveIntensity={3.2}
                   toneMapped={false}
@@ -1304,7 +1309,6 @@ const RoomShellComponent = function RoomShell({
                 <meshBasicMaterial
                   blending={AdditiveBlending}
                   color="#ffd28d"
-                  depthTest={false}
                   depthWrite={false}
                   opacity={0.28}
                   ref={sunGlowMaterialRef}
@@ -1322,7 +1326,6 @@ const RoomShellComponent = function RoomShell({
                 <sphereGeometry args={[0.13, 14, 14]} />
                 <meshStandardMaterial
                   color="#f5f8ff"
-                  depthTest={false}
                   emissive="#e6eeff"
                   emissiveIntensity={0.45}
                   toneMapped={false}
@@ -1337,7 +1340,6 @@ const RoomShellComponent = function RoomShell({
                 <meshBasicMaterial
                   blending={AdditiveBlending}
                   color="#f0f5ff"
-                  depthTest={false}
                   depthWrite={false}
                   opacity={0.12}
                   ref={moonGlowMaterialRef}

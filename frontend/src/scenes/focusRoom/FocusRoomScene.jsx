@@ -368,7 +368,7 @@ export function FocusRoomScene({
 
     if (ambientLightRef.current) {
       ambientLightRef.current.intensity =
-        0.23 + dayFactor * 0.15 + twilightFactor * 0.06 + nightFactor * 0.04;
+        0.17 + dayFactor * 0.09 + twilightFactor * 0.06 + nightFactor * 0.04;
       ambientLightRef.current.color
         .copy(ambientNightColor)
         .lerp(ambientTwilightColor, twilightFactor)
@@ -377,7 +377,7 @@ export function FocusRoomScene({
 
     if (hemisphereLightRef.current) {
       hemisphereLightRef.current.intensity =
-        0.25 + dayFactor * 0.17 + twilightFactor * 0.08 + nightFactor * 0.03;
+        0.2 + dayFactor * 0.11 + twilightFactor * 0.08 + nightFactor * 0.03;
       hemisphereLightRef.current.color
         .copy(hemisphereNightColor)
         .lerp(hemisphereTwilightColor, twilightFactor)
@@ -392,7 +392,7 @@ export function FocusRoomScene({
       const flicker = 1 + Math.sin(elapsedSeconds * 1.7) * 0.006 + Math.sin(elapsedSeconds * 3.1) * 0.003;
       sunlightRef.current.intensity =
         isSunActive
-          ? (dayFactor * 1.05 + twilightFactor * 0.35) * flicker
+          ? (dayFactor * 2.3 + twilightFactor * 0.55) * flicker
           : 0;
 
       const lowBand  = Math.min(1, dayFactor / 0.18);
@@ -417,11 +417,17 @@ export function FocusRoomScene({
       const sunAngle = solarPhase;
       const cosElev = Math.cos(sunAngle);
       const sinElev = Math.sin(sunAngle);
+      // Sun shines in from beyond the window (-x wall) so the wall carves the
+      // light into a window-shaped patch; z sweeps through the day so shadows
+      // travel across the room.
       sunlightRef.current.position.set(
-        cosElev * 3.5,
-        Math.max(0.3, sinElev * 6.0),
-        2.5 + sinElev * 1.2
+        -6.0,
+        Math.max(0.6, sinElev * 6.0),
+        -0.79 + cosElev * 3.2
       );
+      // Skip the shadow-map pass entirely while the sun is down.
+      sunlightRef.current.castShadow =
+        (sceneQuality?.enableShadows ?? false) && isSunActive;
     }
 
     twilightSkyFillScratchColor
@@ -496,9 +502,22 @@ export function FocusRoomScene({
 
       <directionalLight
         ref={sunlightRef}
+        castShadow={sceneQuality?.enableShadows ?? false}
         color="#ffe5c4"
         intensity={0.72}
-        position={[2.8, 4.6, 2.4]}
+        position={[-6, 4.6, 0.4]}
+        shadow-bias={-0.0004}
+        shadow-camera-bottom={-6}
+        shadow-camera-far={22}
+        shadow-camera-left={-6}
+        shadow-camera-near={0.5}
+        shadow-camera-right={6}
+        shadow-camera-top={6}
+        shadow-mapSize={[
+          sceneQuality?.shadowMapSize ?? 1024,
+          sceneQuality?.shadowMapSize ?? 1024,
+        ]}
+        shadow-normalBias={0.02}
       />
 
       <directionalLight
