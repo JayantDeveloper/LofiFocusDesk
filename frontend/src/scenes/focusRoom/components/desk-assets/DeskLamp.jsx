@@ -65,7 +65,7 @@ export function DeskLamp({ isOn = null, sceneQuality, worldHourRef }) {
     const totalLength = socket.y / -direction.y;
     const beamLength = totalLength - rimOffset;
     const rim = socket.clone().addScaledVector(direction, rimOffset);
-    const bulb = socket.clone().addScaledVector(direction, 0.76);
+    const bulb = socket.clone().addScaledVector(direction, 1.18);
     const center = rim.clone().addScaledVector(direction, beamLength * 0.5);
     const landing = socket.clone().addScaledVector(direction, totalLength);
     const spotTarget = new Object3D();
@@ -85,13 +85,13 @@ export function DeskLamp({ isOn = null, sceneQuality, worldHourRef }) {
 
     if (bulbMaterialRef.current) {
       bulbMaterialRef.current.color.copy(baseBulbColor).lerp(litBulbColor, lampStrength);
-      bulbMaterialRef.current.emissiveIntensity = lampStrength * 2.2;
+      bulbMaterialRef.current.emissiveIntensity = lampStrength * 2.8;
     }
     if (shadeInnerMaterialRef.current) {
-      shadeInnerMaterialRef.current.emissiveIntensity = lampStrength * 0.5;
+      shadeInnerMaterialRef.current.emissiveIntensity = lampStrength * 0.65;
     }
     if (lampPointLightRef.current) {
-      lampPointLightRef.current.intensity = lampPointLightEnabled ? lampStrength * 3.0 : 0;
+      lampPointLightRef.current.intensity = lampPointLightEnabled ? lampStrength * 3.8 : 0;
     }
     if (lightConeMeshRef.current && lightConeMaterialRef.current) {
       lightConeMeshRef.current.visible = lampStrength > 0.02;
@@ -206,19 +206,19 @@ export function DeskLamp({ isOn = null, sceneQuality, worldHourRef }) {
         </mesh>
 
         {/* Screw-base neck connecting the socket to the glass envelope. */}
-        <mesh castShadow position={[0, 0.52, 0]}>
-          <cylinderGeometry args={[0.075, 0.065, 0.16, 16]} />
+        <mesh castShadow position={[0, 0.68, 0]}>
+          <cylinderGeometry args={[0.075, 0.068, 0.52, 16]} />
           <meshStandardMaterial color="#9a9186" roughness={0.4} metalness={0.75} />
         </mesh>
 
-        {/* The bulb itself: a frosted glass envelope hanging into the shade,
-            glowing warm when the lamp is on. */}
-        <mesh position={[0, 0.76, 0]}>
-          <sphereGeometry args={[0.21, 24, 24]} />
+        {/* The bulb itself: a frosted glass envelope hanging into the shade
+            with its glowing lower half visible at the opening. */}
+        <mesh position={[0, 1.18, 0]}>
+          <sphereGeometry args={[0.24, 24, 24]} />
           <meshStandardMaterial
             color={initialLampStrength > 0 ? "#ffe3b0" : "#ddd8ce"}
             emissive="#ffb45f"
-            emissiveIntensity={initialLampStrength * 2.2}
+            emissiveIntensity={initialLampStrength * 2.8}
             roughness={0.3}
             metalness={0}
             ref={bulbMaterialRef}
@@ -248,12 +248,12 @@ export function DeskLamp({ isOn = null, sceneQuality, worldHourRef }) {
 
       <primitive object={lightCone.spotTarget} />
       <spotLight
-        angle={0.65}
+        angle={0.71}
         castShadow={(sceneQuality?.enableShadows ?? false) && lampPointLightEnabled}
         color="#ffbe80"
-        decay={1.7}
+        decay={1.5}
         distance={2.8}
-        intensity={initialLampStrength * 3.0}
+        intensity={initialLampStrength * 3.8}
         penumbra={0.75}
         position={[lightCone.bulb.x, lightCone.bulb.y, lightCone.bulb.z]}
         ref={lampPointLightRef}
