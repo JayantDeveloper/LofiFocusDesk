@@ -167,20 +167,24 @@ function createCloudTexture(seed) {
   const clusterCount = 7;
   for (let cluster = 0; cluster < clusterCount; cluster += 1) {
     const baseX = random(0, canvas.width);
-    const baseY = random(24, 96);
+    const baseY = random(38, 92);
     const baseRadiusX = random(46, 92);
     const baseRadiusY = random(11, 18);
     const puffCount = 3 + Math.floor(random(0, 3));
 
     const drawPuff = (x, y, rx, ry, alpha) => {
-      const gradient = context.createRadialGradient(x, y, 0, x, y, rx);
-      gradient.addColorStop(0, `rgba(255,255,255,${alpha.toFixed(3)})`);
-      gradient.addColorStop(0.65, `rgba(255,255,255,${(alpha * 0.45).toFixed(3)})`);
-      gradient.addColorStop(1, "rgba(255,255,255,0)");
-      context.fillStyle = gradient;
-      context.beginPath();
-      context.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
-      context.fill();
+      // Draw at x and one texture-width to each side so the texture tiles
+      // seamlessly as it scrolls — no hard cut edges.
+      [x - canvas.width, x, x + canvas.width].forEach((wrappedX) => {
+        const gradient = context.createRadialGradient(wrappedX, y, 0, wrappedX, y, rx);
+        gradient.addColorStop(0, `rgba(255,255,255,${alpha.toFixed(3)})`);
+        gradient.addColorStop(0.65, `rgba(255,255,255,${(alpha * 0.45).toFixed(3)})`);
+        gradient.addColorStop(1, "rgba(255,255,255,0)");
+        context.fillStyle = gradient;
+        context.beginPath();
+        context.ellipse(wrappedX, y, rx, ry, 0, 0, Math.PI * 2);
+        context.fill();
+      });
     };
 
     drawPuff(baseX, baseY, baseRadiusX, baseRadiusY, random(0.5, 0.68));
@@ -248,6 +252,27 @@ function createStarPositions(seed, count) {
 }
 
 // Fog-and-droplets texture layered over the glass at night (condensation).
+// Soft radial falloff for the sun/moon halo planes — without a texture
+// they render as solid bright rectangles.
+function createGlowTexture() {
+  if (typeof document === "undefined") return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = 128;
+  canvas.height = 128;
+  const context = canvas.getContext("2d");
+  if (!context) return null;
+  const gradient = context.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gradient.addColorStop(0, "rgba(255,255,255,1)");
+  gradient.addColorStop(0.35, "rgba(255,255,255,0.55)");
+  gradient.addColorStop(0.7, "rgba(255,255,255,0.16)");
+  gradient.addColorStop(1, "rgba(255,255,255,0)");
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, 128, 128);
+  const texture = new CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
 function createCondensationTexture(seed) {
   if (typeof document === "undefined") return null;
   const canvas = document.createElement("canvas");
@@ -570,6 +595,10 @@ const RoomShellComponent = function RoomShell({
         : [],
     [starsEnabled],
   );
+  const glowTexture = useMemo(
+    () => (skyBodiesEnabled ? createGlowTexture() : null),
+    [skyBodiesEnabled],
+  );
   const nearCloudTexture = useMemo(
     () => (cloudsEnabled ? createCloudTexture(55711) : null),
     [cloudsEnabled],
@@ -622,8 +651,9 @@ const RoomShellComponent = function RoomShell({
     return () => {
       nearCloudTexture?.dispose();
       farCloudTexture?.dispose();
+      glowTexture?.dispose();
     };
-  }, [nearCloudTexture, farCloudTexture]);
+  }, [nearCloudTexture, farCloudTexture, glowTexture]);
 
   useFrame((state, delta) => {
     const worldHour = worldHourRef?.current ?? 12;
@@ -1213,11 +1243,12 @@ const RoomShellComponent = function RoomShell({
                 rotation={[0, Math.PI / 2, 0]}
                 renderOrder={9}
               >
-                <planeGeometry args={[1.02, 1.02]} />
+                <planeGeometry args={[1.5, 1.5]} />
                 <meshBasicMaterial
                   blending={AdditiveBlending}
                   color="#ffd28d"
                   depthWrite={false}
+                  map={glowTexture}
                   opacity={0.28}
                   ref={sunGlowMaterialRef}
                   side={DoubleSide}
@@ -1244,11 +1275,12 @@ const RoomShellComponent = function RoomShell({
                 rotation={[0, Math.PI / 2, 0]}
                 renderOrder={9}
               >
-                <planeGeometry args={[0.78, 0.78]} />
+                <planeGeometry args={[1.05, 1.05]} />
                 <meshBasicMaterial
                   blending={AdditiveBlending}
                   color="#f0f5ff"
                   depthWrite={false}
+                  map={glowTexture}
                   opacity={0.12}
                   ref={moonGlowMaterialRef}
                   side={DoubleSide}
