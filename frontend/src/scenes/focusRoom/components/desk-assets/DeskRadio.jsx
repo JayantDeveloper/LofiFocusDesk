@@ -25,8 +25,8 @@ export function DeskRadio({ isOn = false }) {
           clearcoat={0.33}
           clearcoatRoughness={0.5}
           color="#42536b"
-          emissive={isOn ? "#5f8fc9" : "#000000"}
-          emissiveIntensity={isOn ? 0.4 : 0}
+          emissive={isOn ? "#e8a04c" : "#000000"}
+          emissiveIntensity={isOn ? 0.3 : 0}
           metalness={0.14}
           roughness={0.44}
         />
