@@ -45,7 +45,6 @@ export function DeskLamp({ isOn = null, sceneQuality, worldHourRef }) {
   const lampPointLightEnabled = sceneQuality?.enableLampPointLight ?? true;
   const lampStrengthRef = useRef(initialLampStrength);
   const bulbMaterialRef = useRef(null);
-  const bulbGlowLightRef = useRef(null);
   const shadeInnerMaterialRef = useRef(null);
   const lampPointLightRef = useRef(null);
   const lightConeMeshRef = useRef(null);
@@ -90,9 +89,6 @@ export function DeskLamp({ isOn = null, sceneQuality, worldHourRef }) {
     }
     if (shadeInnerMaterialRef.current) {
       shadeInnerMaterialRef.current.emissiveIntensity = lampStrength * 0.5;
-    }
-    if (bulbGlowLightRef.current) {
-      bulbGlowLightRef.current.intensity = lampPointLightEnabled ? lampStrength * 0.5 : 0;
     }
     if (lampPointLightRef.current) {
       lampPointLightRef.current.intensity = lampPointLightEnabled ? lampStrength * 3.0 : 0;
@@ -229,16 +225,6 @@ export function DeskLamp({ isOn = null, sceneQuality, worldHourRef }) {
           />
         </mesh>
 
-        {/* Local warm spill from the bulb, on top of the aimed spotlight. */}
-        <pointLight
-          color="#ffbf7f"
-          decay={2}
-          distance={1.1}
-          intensity={initialLampStrength * 0.5}
-          position={[0, 0.76, 0]}
-          ref={bulbGlowLightRef}
-          visible={lampPointLightEnabled}
-        />
       </group>
 
       <mesh
@@ -262,13 +248,13 @@ export function DeskLamp({ isOn = null, sceneQuality, worldHourRef }) {
 
       <primitive object={lightCone.spotTarget} />
       <spotLight
-        angle={0.7}
+        angle={0.65}
         castShadow={(sceneQuality?.enableShadows ?? false) && lampPointLightEnabled}
         color="#ffbe80"
         decay={1.7}
         distance={2.8}
         intensity={initialLampStrength * 3.0}
-        penumbra={0.85}
+        penumbra={0.75}
         position={[lightCone.bulb.x, lightCone.bulb.y, lightCone.bulb.z]}
         ref={lampPointLightRef}
         shadow-bias={-0.0003}
