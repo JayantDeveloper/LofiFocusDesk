@@ -1,6 +1,6 @@
 import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { AdditiveBlending, BackSide, CatmullRomCurve3, Color, DoubleSide, Vector2, Vector3 } from "three";
+import { AdditiveBlending, BackSide, CatmullRomCurve3, Color, DoubleSide, Object3D, Vector2, Vector3 } from "three";
 import { DESK_TOP_Y } from "../../../../constants/deskConstants";
 import { getLampTargetStrength } from "../../utils/lampSchedule";
 
@@ -50,19 +50,27 @@ export function DeskLamp({ isOn = null, sceneQuality, worldHourRef }) {
   const lightConeMeshRef = useRef(null);
   const lightConeMaterialRef = useRef(null);
 
-  // The visible beam runs from the shade mouth down its facing direction
-  // (shade group is rotated -3π/4 about z, so the opening points at
-  // (√2/2, -√2/2, 0)) until it reaches the desk surface at local y = 0.
+  // The shade group sits at the bulb-socket end and its lathe flares 1.35
+  // units along the opening direction (√2/2, -√2/2, 0) to the rim. The
+  // spotlight sits at the bulb just inside the shade; the visible beam starts
+  // at the rim and widens until it reaches the desk surface at local y = 0.
   const lightCone = useMemo(() => {
-    const mouth = new Vector3(
+    const socket = new Vector3(
       headPoint.x + shadeOffsetX,
       headPoint.y + shadeOffsetY,
       headPoint.z,
     );
     const direction = new Vector3(Math.SQRT1_2, -Math.SQRT1_2, 0);
-    const length = mouth.y / -direction.y;
-    const center = mouth.clone().addScaledVector(direction, length * 0.5);
-    return { center, length };
+    const rimOffset = 1.35;
+    const totalLength = socket.y / -direction.y;
+    const beamLength = totalLength - rimOffset;
+    const rim = socket.clone().addScaledVector(direction, rimOffset);
+    const bulb = socket.clone().addScaledVector(direction, 0.3);
+    const center = rim.clone().addScaledVector(direction, beamLength * 0.5);
+    const landing = socket.clone().addScaledVector(direction, totalLength);
+    const spotTarget = new Object3D();
+    spotTarget.position.copy(landing);
+    return { beamLength, bulb, center, spotTarget };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -81,7 +89,7 @@ export function DeskLamp({ isOn = null, sceneQuality, worldHourRef }) {
       bulbMaterialRef.current.emissiveIntensity = lampStrength * 0.95;
     }
     if (lampPointLightRef.current) {
-      lampPointLightRef.current.intensity = lampPointLightEnabled ? lampStrength * 1.15 : 0;
+      lampPointLightRef.current.intensity = lampPointLightEnabled ? lampStrength * 2.6 : 0;
     }
     if (lightConeMeshRef.current && lightConeMaterialRef.current) {
       lightConeMeshRef.current.visible = lampStrength > 0.02;
@@ -206,7 +214,7 @@ export function DeskLamp({ isOn = null, sceneQuality, worldHourRef }) {
         rotation={[0, 0, -(Math.PI * 0.75)]}
         visible={false}
       >
-        <cylinderGeometry args={[0.68, 1.55, lightCone.length, 20, 1, true]} />
+        <cylinderGeometry args={[0.85, 1.5, lightCone.beamLength, 20, 1, true]} />
         <meshBasicMaterial
           ref={lightConeMaterialRef}
           blending={AdditiveBlending}
@@ -219,13 +227,22 @@ export function DeskLamp({ isOn = null, sceneQuality, worldHourRef }) {
         />
       </mesh>
 
-      <pointLight
+      <primitive object={lightCone.spotTarget} />
+      <spotLight
+        angle={0.62}
+        castShadow={(sceneQuality?.enableShadows ?? false) && lampPointLightEnabled}
         color="#ffcf9a"
-        decay={2}
-        distance={2.2}
-        intensity={initialLampStrength * 1.15}
-        position={[headPoint.x + shadeOffsetX - 0.03, headPoint.y + shadeOffsetY + 0.2, headPoint.z]}
+        decay={1.6}
+        distance={1.8}
+        intensity={initialLampStrength * 2.6}
+        penumbra={0.6}
+        position={[lightCone.bulb.x, lightCone.bulb.y, lightCone.bulb.z]}
         ref={lampPointLightRef}
+        shadow-bias={-0.0003}
+        shadow-camera-near={0.05}
+        shadow-mapSize={[512, 512]}
+        shadow-normalBias={0.015}
+        target={lightCone.spotTarget}
         visible={lampPointLightEnabled}
       />
 

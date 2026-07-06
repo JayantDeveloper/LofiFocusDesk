@@ -13,9 +13,9 @@ export function DeskRadio({ isOn = false }) {
         <meshPhysicalMaterial
           clearcoat={0.26}
           clearcoatRoughness={0.72}
-          color="#3f4a5c"
+          color="#54667f"
           metalness={0.08}
-          roughness={0.56}
+          roughness={0.5}
         />
       </mesh>
 
@@ -24,7 +24,9 @@ export function DeskRadio({ isOn = false }) {
         <meshPhysicalMaterial
           clearcoat={0.33}
           clearcoatRoughness={0.5}
-          color="#2b3340"
+          color="#42536b"
+          emissive={isOn ? "#5f8fc9" : "#000000"}
+          emissiveIntensity={isOn ? 0.4 : 0}
           metalness={0.14}
           roughness={0.44}
         />
@@ -50,12 +52,20 @@ export function DeskRadio({ isOn = false }) {
 
       <mesh castShadow position={[-0.095, -0.006, 0.074]} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[0.046, 0.046, 0.01, 24]} />
-        <meshStandardMaterial color="#111722" metalness={0.06} roughness={0.82} />
+        <meshStandardMaterial color="#2c3646" metalness={0.06} roughness={0.78} />
+      </mesh>
+      <mesh position={[-0.095, -0.006, 0.0795]} rotation={[0, 0, 0]}>
+        <torusGeometry args={[0.046, 0.0035, 8, 28]} />
+        <meshStandardMaterial color="#8695ac" metalness={0.5} roughness={0.35} />
       </mesh>
 
       <mesh castShadow position={[0.095, -0.006, 0.074]} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[0.046, 0.046, 0.01, 24]} />
-        <meshStandardMaterial color="#111722" metalness={0.06} roughness={0.82} />
+        <meshStandardMaterial color="#2c3646" metalness={0.06} roughness={0.78} />
+      </mesh>
+      <mesh position={[0.095, -0.006, 0.0795]} rotation={[0, 0, 0]}>
+        <torusGeometry args={[0.046, 0.0035, 8, 28]} />
+        <meshStandardMaterial color="#8695ac" metalness={0.5} roughness={0.35} />
       </mesh>
 
       <mesh castShadow position={[-0.13, 0.062, 0.075]} rotation={[Math.PI / 2, 0, 0]}>

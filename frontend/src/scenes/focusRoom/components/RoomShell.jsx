@@ -18,186 +18,22 @@ import {
 } from "../utils/lightingMath";
 
 const CITY_BUILDINGS = [
-  {
-    accent: "#93a6bc",
-    antenna: 0.1,
-    color: "#d85f5f",
-    depth: 1.6,
-    height: 1.62,
-    id: "b1",
-    roof: 0.08,
-    width: 0.3,
-    x: -1.2,
-    z: 0.1,
-  },
-  {
-    accent: "#a1b1c3",
-    color: "#e0873d",
-    depth: 0.72,
-    height: 1.24,
-    id: "b2",
-    roof: 0.03,
-    width: 0.4,
-    x: -0.18,
-    z: 0.1,
-  },
-  {
-    accent: "#8a9caf",
-    color: "#d2b44b",
-    depth: 0.42,
-    height: 1.56,
-    id: "b3",
-    roof: 0.06,
-    width: 0.32,
-    x: 0.46,
-    z: -0.05,
-  },
-  {
-    accent: "#9eb0c4",
-    antenna: 0.15,
-    color: "#7ca54a",
-    depth: 0.48,
-    height: 2.48,
-    id: "b4",
-    roof: 0.12,
-    width: 0.4,
-    x: -0.82,
-    z: 0.56,
-  },
-  {
-    accent: "#92a5bc",
-    color: "#4f9d67",
-    depth: 0.4,
-    height: 1.22,
-    id: "b5",
-    roof: 0.08,
-    width: 0.43,
-    x: 0.46,
-    z: 0.56,
-  },
-  {
-    accent: "#9eb2c7",
-    color: "#3d9ea4",
-    depth: 0.45,
-    height: 2.02,
-    id: "b6",
-    roof: 0.08,
-    width: 0.36,
-    x: -0.82,
-    z: 1.02,
-  },
-  {
-    accent: "#8ca0b6",
-    antenna: 0.22,
-    color: "#4d7dcb",
-    depth: 0.53,
-    height: 2.08,
-    id: "b7",
-    roof: 0.14,
-    width: 0.42,
-    x: -0.18,
-    z: 1.02,
-  },
-  {
-    accent: "#8da2b9",
-    color: "#6b63d4",
-    depth: 0.56,
-    height: 2.64,
-    id: "b8",
-    roof: 0.08,
-    width: 0.45,
-    x: 0.46,
-    z: 1.02,
-  },
-  {
-    accent: "#9bb0c5",
-    antenna: 0.16,
-    color: "#8b5ad8",
-    depth: 0.52,
-    height: 2.2,
-    id: "b9",
-    roof: 0.07,
-    width: 0.36,
-    x: -0.82,
-    z: 1.48,
-  },
-  {
-    accent: "#8b9db4",
-    color: "#b85ac7",
-    depth: 0.49,
-    height: 1.18,
-    id: "b10",
-    roof: 0.03,
-    width: 0.39,
-    x: -0.18,
-    z: 1.48,
-  },
-  {
-    accent: "#96a9bf",
-    color: "#d45f8b",
-    depth: 0.66,
-    height: 1.72,
-    id: "b11",
-    roof: 0.08,
-    width: 0.39,
-    x: -0.18,
-    z: 0.56,
-  },
-  {
-    accent: "#9caec4",
-    color: "#8d6e63",
-    depth: 0.48,
-    height: 1.31,
-    id: "b12",
-    roof: 0.06,
-    width: 0.37,
-    x: 0.46,
-    z: 1.48,
-  },
-  {
-    accent: "#9bb1c9",
-    color: "#3f6a9b",
-    depth: 0.52,
-    height: 2.5,
-    id: "b13",
-    roof: 0.06,
-    width: 0.4,
-    x: 0.66,
-    z: 1.42,
-  },
-  {
-    accent: "#9eb5cc",
-    color: "#5a8f4e",
-    depth: 0.46,
-    height: 1.58,
-    id: "b14",
-    roof: 0.08,
-    width: 0.5,
-    x: 1.0,
-    z: 1.24,
-  },
-  {
-    accent: "#9cb2c7",
-    color: "#6f64c8",
-    depth: 0.5,
-    height: 1.48,
-    id: "b15",
-    roof: 0.1,
-    width: 0.32,
-    x: 1.02,
-    z: 1.76,
-  },
-  {
-    accent: "#99afc5",
-    color: "#4f7b86",
-    depth: 0.44,
-    height: 1.82,
-    id: "b16",
-    roof: 0.08,
-    width: 0.35,
-    x: 0.82,
-    z: 1.72,
-  },
+  { id: "b1", color: "#7d5443", accent: "#3d4046", depth: 1.6, height: 1.7, roof: 0.08, seed: 101, waterTower: [0.1, 0.12], width: 0.3, x: -1.2, z: 0.1 },
+  { id: "b2", color: "#b0a189", accent: "#45484f", depth: 0.72, height: 1.24, roof: 0.03, seed: 102, waterTower: [-0.08, -0.1], width: 0.4, x: -0.18, z: 0.1 },
+  { id: "b3", color: "#46586c", accent: "#353a42", antenna: 0.3, depth: 0.42, height: 2.6, roof: 0.06, seed: 103, tiers: 1, width: 0.32, x: 0.46, z: -0.05 },
+  { id: "b4", color: "#7e7f86", accent: "#3d4046", antenna: 0.15, depth: 0.48, height: 2.48, roof: 0.12, seed: 104, tiers: 1, width: 0.4, x: -0.82, z: 0.56 },
+  { id: "b5", color: "#8a5f4a", accent: "#45484f", depth: 0.4, height: 1.22, roof: 0.08, seed: 105, waterTower: [0.06, 0.1], width: 0.43, x: 0.46, z: 0.56 },
+  { id: "b6", color: "#39434f", accent: "#2e333b", depth: 0.45, height: 2.02, roof: 0.08, seed: 106, width: 0.36, x: -0.82, z: 1.02 },
+  { id: "b7", color: "#4c5c6e", accent: "#353a42", antenna: 0.22, depth: 0.53, height: 2.08, roof: 0.14, seed: 107, width: 0.42, x: -0.18, z: 1.02 },
+  { id: "b8", color: "#a3947c", accent: "#45484f", antenna: 0.28, depth: 0.56, height: 3.0, roof: 0.08, seed: 108, tiers: 2, width: 0.45, x: 0.46, z: 1.02 },
+  { id: "b9", color: "#6d6f77", accent: "#3d4046", depth: 0.52, height: 2.2, roof: 0.07, seed: 109, width: 0.36, x: -0.82, z: 1.48 },
+  { id: "b10", color: "#6e4a3c", accent: "#45484f", depth: 0.49, height: 1.18, roof: 0.03, seed: 110, waterTower: [-0.06, 0.08], width: 0.39, x: -0.18, z: 1.48 },
+  { id: "b11", color: "#9c8d76", accent: "#3d4046", depth: 0.66, height: 1.72, roof: 0.08, seed: 111, width: 0.39, x: -0.18, z: 0.56 },
+  { id: "b12", color: "#82584a", accent: "#45484f", depth: 0.48, height: 1.31, roof: 0.06, seed: 112, waterTower: [0.08, -0.06], width: 0.37, x: 0.46, z: 1.48 },
+  { id: "b13", color: "#333e4b", accent: "#2e333b", antenna: 0.16, depth: 0.52, height: 2.5, roof: 0.06, seed: 113, tiers: 1, width: 0.4, x: 0.66, z: 1.42 },
+  { id: "b14", color: "#ab9d85", accent: "#45484f", depth: 0.46, height: 1.58, roof: 0.08, seed: 114, width: 0.5, x: 1.0, z: 1.24 },
+  { id: "b15", color: "#75767e", accent: "#3d4046", depth: 0.5, height: 1.48, roof: 0.1, seed: 115, width: 0.32, x: 1.02, z: 1.76 },
+  { id: "b16", color: "#47525f", accent: "#353a42", depth: 0.44, height: 1.82, roof: 0.08, seed: 116, width: 0.35, x: 0.82, z: 1.72 },
 ];
 
 const LEFT_WALL_X = -4.0;
@@ -223,8 +59,8 @@ const SUN_X = 0.46;
 const SUN_Z = 1.48;
 const SUN_Y = WINDOW_CENTER_Y + 1.02;
 const SKY_BACKDROP_X = -1.4;
-const FAR_CLOUD_X = -1.3;
-const NEAR_CLOUD_X = -1.18;
+const FAR_CLOUD_X = -1.385;
+const NEAR_CLOUD_X = -1.365;
 const SKY_PLANE_WIDTH = 4.8;
 const SKY_PLANE_HEIGHT = 3.6;
 const ORBIT_CENTER_Y = WINDOW_CENTER_Y + 1.4;
@@ -317,46 +153,52 @@ function createSunRayLayers(layerCount = MAX_SUN_RAY_LAYER_COUNT) {
 function createCloudTexture(seed) {
   if (typeof document === "undefined") return null;
   const canvas = document.createElement("canvas");
-  canvas.width = 256;
-  canvas.height = 128;
+  canvas.width = 512;
+  canvas.height = 192;
   const context = canvas.getContext("2d");
   if (!context) return null;
 
   const random = createSeededRandom(seed);
   context.clearRect(0, 0, canvas.width, canvas.height);
-  for (let index = 0; index < 34; index += 1) {
-    const x = random(0, canvas.width);
-    const y = random(8, canvas.height - 8);
-    const radiusX = random(36, 96);
-    const radiusY = random(12, 42);
-    const gradient = context.createRadialGradient(x, y, 0, x, y, radiusX);
-    gradient.addColorStop(
-      0,
-      `rgba(255,255,255,${random(0.2, 0.44).toFixed(3)})`,
-    );
-    gradient.addColorStop(
-      0.72,
-      `rgba(255,255,255,${random(0.06, 0.2).toFixed(3)})`,
-    );
-    gradient.addColorStop(1, "rgba(255,255,255,0)");
-    context.fillStyle = gradient;
-    context.beginPath();
-    context.ellipse(
-      x,
-      y,
-      radiusX,
-      radiusY,
-      random(-0.25, 0.25),
-      0,
-      Math.PI * 2,
-    );
-    context.fill();
+
+  // A handful of cumulus clusters: a wide flat base ellipse with a few
+  // smaller billows piled on top, all soft-edged. Kept in the upper band so
+  // clouds ride high in the sky rather than sitting on the skyline.
+  const clusterCount = 7;
+  for (let cluster = 0; cluster < clusterCount; cluster += 1) {
+    const baseX = random(0, canvas.width);
+    const baseY = random(24, 96);
+    const baseRadiusX = random(46, 92);
+    const baseRadiusY = random(11, 18);
+    const puffCount = 3 + Math.floor(random(0, 3));
+
+    const drawPuff = (x, y, rx, ry, alpha) => {
+      const gradient = context.createRadialGradient(x, y, 0, x, y, rx);
+      gradient.addColorStop(0, `rgba(255,255,255,${alpha.toFixed(3)})`);
+      gradient.addColorStop(0.65, `rgba(255,255,255,${(alpha * 0.45).toFixed(3)})`);
+      gradient.addColorStop(1, "rgba(255,255,255,0)");
+      context.fillStyle = gradient;
+      context.beginPath();
+      context.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+      context.fill();
+    };
+
+    drawPuff(baseX, baseY, baseRadiusX, baseRadiusY, random(0.5, 0.68));
+    for (let puff = 0; puff < puffCount; puff += 1) {
+      drawPuff(
+        baseX + random(-baseRadiusX * 0.6, baseRadiusX * 0.6),
+        baseY - random(4, 14),
+        random(18, 40),
+        random(10, 20),
+        random(0.42, 0.6),
+      );
+    }
   }
 
   const texture = new CanvasTexture(canvas);
   texture.wrapS = RepeatWrapping;
   texture.wrapT = RepeatWrapping;
-  texture.repeat.set(2, 1);
+  texture.repeat.set(1.6, 1);
   texture.needsUpdate = true;
   return texture;
 }
@@ -505,24 +347,64 @@ function CityBuilding({ building, frontWindowMaterial, sideWindowMaterial }) {
   useLayoutEffect(() => {
     if (!frontWindowRef.current) return;
     const matrixProxy = new Object3D();
+    const colorProxy = new Color();
+    // Seeded mix of lit and dark windows so facades read like a real city.
+    const random = createSeededRandom((building.seed ?? 7) * 13 + 5);
     frontWindowOffsets.forEach((offset, index) => {
       matrixProxy.position.set(offset[0], offset[1], offset[2]);
       matrixProxy.updateMatrix();
       frontWindowRef.current.setMatrixAt(index, matrixProxy.matrix);
+      const lit = random(0, 1) < 0.45 ? random(0.7, 1) : random(0.15, 0.38);
+      colorProxy.setScalar(lit);
+      frontWindowRef.current.setColorAt(index, colorProxy);
     });
     frontWindowRef.current.instanceMatrix.needsUpdate = true;
-  }, [frontWindowOffsets]);
+    if (frontWindowRef.current.instanceColor) {
+      frontWindowRef.current.instanceColor.needsUpdate = true;
+    }
+  }, [building.seed, frontWindowOffsets]);
 
   useLayoutEffect(() => {
     if (!sideWindowRef.current) return;
     const matrixProxy = new Object3D();
+    const colorProxy = new Color();
+    const random = createSeededRandom((building.seed ?? 7) * 29 + 11);
     sideWindowOffsets.forEach((offset, index) => {
       matrixProxy.position.set(offset[0], offset[1], offset[2]);
       matrixProxy.updateMatrix();
       sideWindowRef.current.setMatrixAt(index, matrixProxy.matrix);
+      const lit = random(0, 1) < 0.4 ? random(0.6, 0.9) : random(0.12, 0.32);
+      colorProxy.setScalar(lit);
+      sideWindowRef.current.setColorAt(index, colorProxy);
     });
     sideWindowRef.current.instanceMatrix.needsUpdate = true;
-  }, [sideWindowOffsets]);
+    if (sideWindowRef.current.instanceColor) {
+      sideWindowRef.current.instanceColor.needsUpdate = true;
+    }
+  }, [building.seed, sideWindowOffsets]);
+
+  // NYC-style setbacks: successive smaller boxes stacked on the main mass.
+  const tierBoxes = [];
+  let stackTopY = scaledHeight;
+  let topDepth = scaledDepth;
+  let topWidth = scaledWidth;
+  const tierSpecs = [
+    { height: 0.16, shrink: 0.72 },
+    { height: 0.11, shrink: 0.68 },
+  ];
+  for (let tierIndex = 0; tierIndex < (building.tiers ?? 0); tierIndex += 1) {
+    const spec = tierSpecs[Math.min(tierIndex, tierSpecs.length - 1)];
+    topDepth *= spec.shrink;
+    topWidth *= spec.shrink;
+    tierBoxes.push({
+      key: `${building.id}-tier-${tierIndex}`,
+      centerY: stackTopY + spec.height * 0.5,
+      depth: topDepth,
+      height: spec.height,
+      width: topWidth,
+    });
+    stackTopY += spec.height;
+  }
 
   return (
     <group position={[building.x, 0, building.z]}>
@@ -548,12 +430,18 @@ function CityBuilding({ building, frontWindowMaterial, sideWindowMaterial }) {
           </instancedMesh>
         </group>
       </mesh>
+      {tierBoxes.map((tier) => (
+        <mesh key={tier.key} receiveShadow position={[0, tier.centerY, 0]}>
+          <boxGeometry args={[tier.depth, tier.height, tier.width]} />
+          <meshLambertMaterial color={building.color} />
+        </mesh>
+      ))}
       <mesh
         receiveShadow
-        position={[0, scaledHeight + building.roof * 0.5, 0]}
+        position={[0, stackTopY + building.roof * 0.5, 0]}
       >
         <boxGeometry
-          args={[scaledDepth * 0.72, building.roof, scaledWidth * 0.72]}
+          args={[topDepth * 0.72, building.roof, topWidth * 0.72]}
         />
         <meshLambertMaterial color={building.accent} />
       </mesh>
@@ -561,13 +449,31 @@ function CityBuilding({ building, frontWindowMaterial, sideWindowMaterial }) {
         <mesh
           position={[
             0,
-            scaledHeight + building.roof + building.antenna * 0.5,
+            stackTopY + building.roof + building.antenna * 0.5,
             0,
           ]}
         >
           <cylinderGeometry args={[0.006, 0.006, building.antenna, 10]} />
           <meshLambertMaterial color="#b7bec8" />
         </mesh>
+      ) : null}
+      {building.waterTower ? (
+        <group
+          position={[
+            building.waterTower[0],
+            scaledHeight + building.roof,
+            building.waterTower[1],
+          ]}
+        >
+          <mesh receiveShadow position={[0, 0.05, 0]}>
+            <cylinderGeometry args={[0.048, 0.054, 0.1, 12]} />
+            <meshLambertMaterial color="#584434" />
+          </mesh>
+          <mesh position={[0, 0.125, 0]}>
+            <coneGeometry args={[0.062, 0.05, 12]} />
+            <meshLambertMaterial color="#3f322a" />
+          </mesh>
+        </group>
       ) : null}
     </group>
   );
@@ -881,18 +787,18 @@ const RoomShellComponent = function RoomShell({
 
     if (nearCloudMaterialRef.current?.map) {
       nearCloudMaterialRef.current.map.offset.x =
-        (nearCloudMaterialRef.current.map.offset.x + delta * 0.008) % 1;
+        (nearCloudMaterialRef.current.map.offset.x + delta * 0.0105) % 1;
       nearCloudMaterialRef.current.opacity =
-        0.23 *
+        0.55 *
         clamp01(
           1 - (nightLightingStrength + twilightFactor * 0.45) * 1.4,
         );
     }
     if (farCloudMaterialRef.current?.map) {
       farCloudMaterialRef.current.map.offset.x =
-        (farCloudMaterialRef.current.map.offset.x + delta * 0.013) % 1;
+        (farCloudMaterialRef.current.map.offset.x + delta * 0.0045) % 1;
       farCloudMaterialRef.current.opacity =
-        0.16 *
+        0.45 *
         clamp01(
           1 - (nightLightingStrength + twilightFactor * 0.45) * 1.5,
         );
@@ -1060,12 +966,14 @@ const RoomShellComponent = function RoomShell({
       <group>
         <mesh
           position={[WINDOW_GLASS_X, WINDOW_CENTER_Y, WINDOW_CENTER_Z]}
+          renderOrder={7}
           rotation={[0, Math.PI / 2, 0]}
         >
           <planeGeometry args={[WINDOW_WIDTH, WINDOW_HEIGHT]} />
           <meshStandardMaterial
             ref={windowGlassMaterialRef}
             color="#a5bfd6"
+            depthWrite={false}
             metalness={0.1}
             roughness={0.08}
             transparent
@@ -1171,7 +1079,7 @@ const RoomShellComponent = function RoomShell({
       {condensationTexture ? (
         <mesh
           position={[WINDOW_GLASS_X + 0.006, WINDOW_CENTER_Y, WINDOW_CENTER_Z]}
-          renderOrder={6}
+          renderOrder={8}
           rotation={[0, Math.PI / 2, 0]}
         >
           <planeGeometry args={[WINDOW_WIDTH, WINDOW_HEIGHT]} />
