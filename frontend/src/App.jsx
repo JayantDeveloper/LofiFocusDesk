@@ -82,6 +82,25 @@ function App() {
   const isSceneReady = isSceneModuleLoaded && isSceneCanvasReady && isSceneDataReady;
   const isSceneLoading = shouldRenderScene && !isSceneReady;
   const calendarEmbed = user?.calendar_embed || undefined;
+
+  // Escape closes the topmost overlay: settings first, then popups.
+  useEffect(() => {
+    const handleEscape = (event) => {
+      if (event.key !== "Escape") return;
+      if (isSettingsOpen) {
+        setIsSettingsOpen(false);
+      } else if (isBoardPopupOpen) {
+        setIsBoardPopupOpen(false);
+      } else if (isCalendarPopupOpen) {
+        setIsCalendarPopupOpen(false);
+      } else if (isStatsCardOpen) {
+        setIsStatsCardOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [isSettingsOpen, isBoardPopupOpen, isCalendarPopupOpen, isStatsCardOpen]);
+
   const musicUrls = normalizeMusicUrls(user?.music_urls);
   const radioSyncEnabled = user?.radio_sync_enabled === true;
   const focusSyncSlot = clampMusicSlot(user?.radio_focus_slot, DEFAULT_SYNC_FOCUS_SLOT);
@@ -427,7 +446,13 @@ function App() {
           isOpen={isCalendarPopupOpen}
           onClose={() => setIsCalendarPopupOpen(false)}
         >
-          <GoogleCalendar embedUrl={calendarEmbed} />
+          <GoogleCalendar
+            embedUrl={calendarEmbed}
+            onOpenSettings={() => {
+              setIsCalendarPopupOpen(false);
+              setIsSettingsOpen(true);
+            }}
+          />
         </FocusRoomPopup>
       ) : null}
 

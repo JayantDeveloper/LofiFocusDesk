@@ -6,16 +6,16 @@ import {
 } from "../../../../constants/todoBoardConstants";
 
 const STATUS_PILL = {
-  "Not Started": { background: "#2a2a2a", color: "#888882" },
-  "In Progress":  { background: "#1c3050", color: "#5b9bd5" },
-  "Done":         { background: "#1a3320", color: "#58a65c" },
+  "Not Started": { background: "#e9dfcc", color: "#8a7a60" },
+  "In Progress":  { background: "#dbe6f2", color: "#46688f" },
+  "Done":         { background: "#dcead2", color: "#587f45" },
 };
 
 const DIFFICULTY_PILL = {
-  "Easy":      { background: "#1c2e48", color: "#5b9bd5" },
-  "Medium":    { background: "#3a2e06", color: "#c9920c" },
-  "Hard":      { background: "#3a1e06", color: "#d97530" },
-  "Very Hard": { background: "#3a0a0a", color: "#c94040" },
+  "Easy":      { background: "#dbe6f2", color: "#46688f" },
+  "Medium":    { background: "#f4e6c4", color: "#96700f" },
+  "Hard":      { background: "#f6dcc4", color: "#a3571d" },
+  "Very Hard": { background: "#f4d2cc", color: "#9c3126" },
 };
 
 export function BoardItem({
@@ -51,6 +51,7 @@ export function BoardItem({
     >
       <div className="focus-board-item-row">
         <input
+          autoFocus={String(item.id).startsWith("optimistic-task-")}
           className={`focus-board-item-title-input${isExpanded ? " expanded" : ""}`}
           name="title"
           value={item.title}

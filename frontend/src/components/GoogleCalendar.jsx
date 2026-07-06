@@ -8,11 +8,40 @@ function extractSrc(urlOrIframe) {
   return trimmed;
 }
 
-export default function GoogleCalendar({ embedUrl }) {
-  const parsed = extractSrc(embedUrl);
-  const src = parsed && parsed.length > 0
-    ? parsed
-    : "https://calendar.google.com/calendar/embed?src=c_cf94d3rg0gddvea9j43t191a98%40group.calendar.google.com&ctz=America%2FNew_York";
+const CONNECT_STEPS = [
+  "Open Google Calendar on the web and click the gear, then Settings.",
+  "Under \"Settings for my calendars\", pick the calendar to show here.",
+  "Scroll to \"Integrate calendar\" and copy the embed code (or public URL).",
+  "Paste it into Settings here and hit Save.",
+];
+
+export default function GoogleCalendar({ embedUrl, onOpenSettings }) {
+  const src = extractSrc(embedUrl);
+
+  if (!src) {
+    return (
+      <div className="calendar-connect">
+        <h3>Connect your Google Calendar</h3>
+        <p className="calendar-connect-sub">
+          Your schedule shows up right here once you link it.
+        </p>
+        <ol>
+          {CONNECT_STEPS.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+        {onOpenSettings ? (
+          <button className="calendar-connect-button" onClick={onOpenSettings} type="button">
+            Open Settings
+          </button>
+        ) : null}
+        <p className="calendar-connect-hint">
+          Tip: the calendar must be public (or "See only free/busy") for embeds to work.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <iframe
       src={src}

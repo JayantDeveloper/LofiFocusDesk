@@ -3,6 +3,23 @@ function formatScore(score) {
   return Math.round(clamped);
 }
 
+function ScoreRing({ score, ringColor, trackColor }) {
+  const value = formatScore(score);
+  const angle = value * 3.6;
+  return (
+    <div
+      className="focus-stats-ring"
+      style={{
+        background: `conic-gradient(${ringColor} ${angle}deg, ${trackColor} ${angle}deg)`,
+      }}
+      role="img"
+      aria-label={`${value} out of 100`}
+    >
+      <span>{value}</span>
+    </div>
+  );
+}
+
 export function FocusStatsCard({
   completedFocusSessions,
   completedTasks,
@@ -29,7 +46,7 @@ export function FocusStatsCard({
         <h2>Session Stats</h2>
         <div className="focus-stats-card-header-actions">
           <button onClick={onResetScores} type="button">
-            Reset Scores
+            Reset
           </button>
           <button onClick={onClose} type="button">
             Close
@@ -39,23 +56,38 @@ export function FocusStatsCard({
 
       <div className="focus-stats-grid">
         <article className="focus-stats-tile focus-score">
-          <h3>Focus Score</h3>
-          <p>{formatScore(focusScore)}</p>
-          <span>{safeCompletedSessions} focus sessions completed</span>
+          <ScoreRing
+            score={focusScore}
+            ringColor="#5f87b8"
+            trackColor="rgba(255, 255, 255, 0.55)"
+          />
+          <h3>Focus</h3>
+          <span>
+            {safeCompletedSessions} session{safeCompletedSessions === 1 ? "" : "s"} done
+          </span>
         </article>
 
         <article className="focus-stats-tile task-score">
-          <h3>Task Score</h3>
-          <p>{formatScore(taskScore)}</p>
+          <ScoreRing
+            score={taskScore}
+            ringColor="#6f9a55"
+            trackColor="rgba(255, 255, 255, 0.55)"
+          />
+          <h3>Tasks</h3>
           <span>
-            {safeCompletedTasks}/{safeTotalTasks} tasks cleared via Done
+            {safeCompletedTasks}/{safeTotalTasks} cleared
           </span>
         </article>
 
         <article className="focus-stats-tile tokens-earned">
-          <h3>Tokens Earned</h3>
-          <p>{safeEarnedTokens}</p>
-          <span>pts from completed tasks</span>
+          <div className="focus-stats-token">
+            <span className="focus-stats-token-star" aria-hidden="true">
+              ✨
+            </span>
+            <span className="focus-stats-token-value">{safeEarnedTokens}</span>
+          </div>
+          <h3>Tokens</h3>
+          <span>from finished tasks</span>
         </article>
       </div>
     </section>

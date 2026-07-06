@@ -68,6 +68,14 @@ export function SettingsDrawer({ isOpen, onClose }) {
 
   if (!isOpen) return null;
 
+  const trimmedCalendarEmbed = calendarEmbed.trim();
+  const calendarSrc = trimmedCalendarEmbed.startsWith("<iframe")
+    ? (trimmedCalendarEmbed.match(/src=["']([^"']+)["']/i)?.[1] ?? "")
+    : trimmedCalendarEmbed;
+  const calendarLooksWrong =
+    trimmedCalendarEmbed.length > 0 &&
+    !calendarSrc.includes("calendar.google.com/calendar/embed");
+
   const showSaveBanner = () => {
     clearSaveBannerTimers();
     setSaveBannerState("visible");
@@ -132,13 +140,25 @@ export function SettingsDrawer({ isOpen, onClose }) {
             <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
           </label>
           <label>
-            <span>Calendar embed URL</span>
+            <span>Google Calendar embed</span>
             <textarea
               ref={calendarEmbedRef}
               value={calendarEmbed}
               onChange={(e) => setCalendarEmbed(e.target.value)}
               rows={3}
+              placeholder='Paste the embed code (or URL) from Google Calendar — e.g. <iframe src="https://calendar.google.com/calendar/embed?src=...">'
             />
+            {calendarLooksWrong ? (
+              <p className="settings-field-warning">
+                That doesn&apos;t look like a Google Calendar embed link — expected a
+                calendar.google.com/calendar/embed URL or its &lt;iframe&gt; code.
+              </p>
+            ) : null}
+            <p className="settings-field-hint">
+              Google Calendar &rarr; gear &rarr; Settings &rarr; pick your calendar &rarr;
+              &quot;Integrate calendar&quot; &rarr; copy the embed code. The calendar must be
+              public for the embed to display.
+            </p>
           </label>
           <div className="music-url-group">
             <div className="radio-sync-group">

@@ -45,7 +45,11 @@ export function FocusTodoBoardApp({ boardPomodoro, boardTodo }) {
 
         <main className="focus-board-items-section">
           {items.length === 0 ? (
-            <p className="focus-board-empty-state">No tasks yet. Add your first item.</p>
+            <p className="focus-board-empty-state">
+              Nothing on the board yet.
+              <br />
+              Hit &quot;+ Add Item&quot; below, give it a name, and get to work.
+            </p>
           ) : (
             items.map((item) => (
               <BoardItem

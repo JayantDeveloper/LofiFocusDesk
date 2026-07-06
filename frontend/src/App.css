@@ -169,10 +169,10 @@
   width: 90vw;
   height: 90vh;
   border-radius: 24px;
-  background: #191919;
+  background: linear-gradient(160deg, #2b1d12 0%, #211509 100%);
   box-shadow:
     0 28px 46px rgba(0, 0, 0, 0.55),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+    inset 0 0 0 1px rgba(224, 178, 110, 0.16);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -181,10 +181,10 @@
 .focus-board-popup-close {
   align-self: flex-end;
   margin: 12px 12px 0;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(224, 178, 110, 0.3);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  color: #a0a09a;
+  background: rgba(224, 178, 110, 0.1);
+  color: #d9bd8f;
   font: 600 0.75rem/1 "Avenir Next", "Segoe UI", sans-serif;
   letter-spacing: 0.04em;
   padding: 7px 14px;
@@ -192,8 +192,8 @@
 }
 
 .focus-board-popup-close:hover {
-  background: rgba(255, 255, 255, 0.14);
-  color: #e8e8e6;
+  background: rgba(224, 178, 110, 0.22);
+  color: #f6e3c2;
 }
 
 .focus-board-popup-content {
@@ -203,10 +203,81 @@
   overflow: hidden;
 }
 
+.focus-calendar-popup-content {
+  background: #f3e8d3;
+}
+
 .focus-calendar-popup-content iframe {
   display: block;
   width: 100%;
+  height: 100% !important;
+}
+
+/* "Connect your calendar" empty state */
+.calendar-connect {
   height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px 24px;
+  text-align: center;
+  color: #4a3421;
+  font-family: "Manrope", "Avenir Next", sans-serif;
+}
+
+.calendar-connect h3 {
+  margin: 0;
+  font-family: "Playfair Display", serif;
+  font-size: 26px;
+  color: #3d2610;
+}
+
+.calendar-connect-sub {
+  margin: 0;
+  color: #7a6347;
+  font-size: 14px;
+}
+
+.calendar-connect ol {
+  margin: 8px 0 4px;
+  padding: 16px 22px 16px 40px;
+  max-width: 460px;
+  text-align: left;
+  background: #fbf4e6;
+  border: 1px solid #e0cda9;
+  border-radius: 14px;
+  color: #5a4531;
+  font-size: 13.5px;
+  line-height: 1.65;
+}
+
+.calendar-connect ol li + li {
+  margin-top: 6px;
+}
+
+.calendar-connect-button {
+  border: none;
+  border-radius: 12px;
+  padding: 11px 26px;
+  background: linear-gradient(120deg, #f0bd4d, #b77b2e);
+  color: #1c1206;
+  font: 700 0.85rem/1 "Space Mono", monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 10px 22px rgba(240, 189, 77, 0.3);
+}
+
+.calendar-connect-button:hover {
+  filter: brightness(1.06);
+}
+
+.calendar-connect-hint {
+  margin: 2px 0 0;
+  color: #a08a6b;
+  font-size: 12px;
 }
 
 .focus-stats-card {
@@ -269,48 +340,85 @@
 .focus-stats-grid {
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .focus-stats-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
   border-radius: 14px;
-  padding: 10px 11px 11px;
+  padding: 12px 8px 11px;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.32);
+  text-align: center;
 }
 
 .focus-stats-tile h3 {
-  margin: 0 0 4px;
-  color: rgba(15, 29, 51, 0.86);
-  font: 700 0.7rem/1.1 "Manrope", "Avenir Next", sans-serif;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.focus-stats-tile p {
   margin: 0;
-  color: #0f1c30;
-  font: 700 2rem/1 "Bebas Neue", "Manrope", sans-serif;
-  letter-spacing: 0.03em;
+  color: rgba(61, 41, 20, 0.85);
+  font: 700 0.68rem/1.1 "Manrope", "Avenir Next", sans-serif;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
 }
 
 .focus-stats-tile span {
   display: block;
-  margin-top: 4px;
-  color: rgba(21, 32, 48, 0.75);
-  font: 700 0.68rem/1.15 "Manrope", "Avenir Next", sans-serif;
+  color: rgba(87, 64, 39, 0.72);
+  font: 700 0.64rem/1.2 "Manrope", "Avenir Next", sans-serif;
   letter-spacing: 0.02em;
 }
 
+.focus-stats-ring {
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  box-shadow: inset 0 1px 3px rgba(74, 52, 33, 0.18);
+}
+
+.focus-stats-ring span {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #fbf4e6;
+  display: grid;
+  place-items: center;
+  color: #3d2914;
+  font: 700 1.15rem/1 "Bebas Neue", "Manrope", sans-serif;
+  letter-spacing: 0.03em;
+}
+
+.focus-stats-token {
+  height: 62px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+
+.focus-stats-token-star {
+  font-size: 18px;
+}
+
+.focus-stats-token-value {
+  color: #3d2914;
+  font: 700 2rem/1 "Bebas Neue", "Manrope", sans-serif;
+  letter-spacing: 0.03em;
+}
+
 .focus-stats-tile.focus-score {
-  background: linear-gradient(145deg, #d6e8fc, #b8d4f4);
+  background: linear-gradient(145deg, #dde9f6, #c4d7ec);
 }
 
 .focus-stats-tile.task-score {
-  background: linear-gradient(145deg, #d5ebcc, #bbdda8);
+  background: linear-gradient(145deg, #dfecd3, #c6dcb2);
 }
 
 .focus-stats-tile.tokens-earned {
-  background: linear-gradient(145deg, #e2dcf9, #c7bcf0);
+  background: linear-gradient(145deg, #f2e3c8, #e6cd9f);
 }
 
 .focus-room-music-unblock {
