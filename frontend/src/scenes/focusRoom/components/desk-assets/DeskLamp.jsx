@@ -92,10 +92,10 @@ export function DeskLamp({ isOn = null, sceneQuality, worldHourRef }) {
       shadeInnerMaterialRef.current.emissiveIntensity = lampStrength * 0.5;
     }
     if (bulbGlowLightRef.current) {
-      bulbGlowLightRef.current.intensity = lampPointLightEnabled ? lampStrength * 0.9 : 0;
+      bulbGlowLightRef.current.intensity = lampPointLightEnabled ? lampStrength * 0.5 : 0;
     }
     if (lampPointLightRef.current) {
-      lampPointLightRef.current.intensity = lampPointLightEnabled ? lampStrength * 3.4 : 0;
+      lampPointLightRef.current.intensity = lampPointLightEnabled ? lampStrength * 3.0 : 0;
     }
     if (lightConeMeshRef.current && lightConeMaterialRef.current) {
       lightConeMeshRef.current.visible = lampStrength > 0.02;
@@ -233,8 +233,8 @@ export function DeskLamp({ isOn = null, sceneQuality, worldHourRef }) {
         <pointLight
           color="#ffbf7f"
           decay={2}
-          distance={1.7}
-          intensity={initialLampStrength * 0.9}
+          distance={1.1}
+          intensity={initialLampStrength * 0.5}
           position={[0, 0.76, 0]}
           ref={bulbGlowLightRef}
           visible={lampPointLightEnabled}
@@ -247,7 +247,7 @@ export function DeskLamp({ isOn = null, sceneQuality, worldHourRef }) {
         rotation={[0, 0, -(Math.PI * 0.75)]}
         visible={false}
       >
-        <cylinderGeometry args={[0.85, 2.15, lightCone.beamLength, 20, 1, true]} />
+        <cylinderGeometry args={[0.85, 2.5, lightCone.beamLength, 20, 1, true]} />
         <meshBasicMaterial
           ref={lightConeMaterialRef}
           blending={AdditiveBlending}
@@ -262,13 +262,13 @@ export function DeskLamp({ isOn = null, sceneQuality, worldHourRef }) {
 
       <primitive object={lightCone.spotTarget} />
       <spotLight
-        angle={0.92}
+        angle={0.7}
         castShadow={(sceneQuality?.enableShadows ?? false) && lampPointLightEnabled}
         color="#ffbe80"
         decay={1.7}
         distance={2.8}
-        intensity={initialLampStrength * 3.4}
-        penumbra={0.9}
+        intensity={initialLampStrength * 3.0}
+        penumbra={0.85}
         position={[lightCone.bulb.x, lightCone.bulb.y, lightCone.bulb.z]}
         ref={lampPointLightRef}
         shadow-bias={-0.0003}
