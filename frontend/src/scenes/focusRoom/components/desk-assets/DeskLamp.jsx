@@ -60,7 +60,7 @@ export function DeskLamp({ isOn = null, sceneQuality, worldHourRef }) {
       headPoint.y + shadeOffsetY,
       headPoint.z,
     );
-    const direction = new Vector3(Math.sin(Math.PI * 0.361), -Math.cos(Math.PI * 0.361), 0);
+    const direction = new Vector3(Math.SQRT1_2, -Math.SQRT1_2, 0);
     const rimOffset = 1.35;
     const totalLength = socket.y / -direction.y;
     const beamLength = totalLength - rimOffset;
@@ -91,11 +91,11 @@ export function DeskLamp({ isOn = null, sceneQuality, worldHourRef }) {
       shadeInnerMaterialRef.current.emissiveIntensity = lampStrength * 0.65;
     }
     if (lampPointLightRef.current) {
-      lampPointLightRef.current.intensity = lampPointLightEnabled ? lampStrength * 3.6 : 0;
+      lampPointLightRef.current.intensity = lampPointLightEnabled ? lampStrength * 3.2 : 0;
     }
     if (lightConeMeshRef.current && lightConeMaterialRef.current) {
       lightConeMeshRef.current.visible = lampStrength > 0.02;
-      lightConeMaterialRef.current.opacity = lampStrength * 0.038;
+      lightConeMaterialRef.current.opacity = lampStrength * 0.02;
     }
   });
 
@@ -170,7 +170,7 @@ export function DeskLamp({ isOn = null, sceneQuality, worldHourRef }) {
 
       <group
         position={[headPoint.x + shadeOffsetX, headPoint.y + shadeOffsetY, headPoint.z]}
-        rotation={[0, 0, -(Math.PI * 0.861)]}
+        rotation={[0, 0, -(Math.PI * 0.75)]}
       >
         <mesh castShadow receiveShadow>
           <latheGeometry args={[shadeProfile, 32]} />
@@ -230,10 +230,10 @@ export function DeskLamp({ isOn = null, sceneQuality, worldHourRef }) {
       <mesh
         ref={lightConeMeshRef}
         position={[lightCone.center.x, lightCone.center.y, lightCone.center.z]}
-        rotation={[0, 0, -(Math.PI * 0.861)]}
+        rotation={[0, 0, -(Math.PI * 0.75)]}
         visible={false}
       >
-        <cylinderGeometry args={[0.85, 1.6, lightCone.beamLength, 20, 1, true]} />
+        <cylinderGeometry args={[0.85, 1.2, lightCone.beamLength, 20, 1, true]} />
         <meshBasicMaterial
           ref={lightConeMaterialRef}
           blending={AdditiveBlending}
@@ -248,13 +248,13 @@ export function DeskLamp({ isOn = null, sceneQuality, worldHourRef }) {
 
       <primitive object={lightCone.spotTarget} />
       <spotLight
-        angle={0.61}
+        angle={0.42}
         castShadow={(sceneQuality?.enableShadows ?? false) && lampPointLightEnabled}
         color="#ffbe80"
-        decay={1.5}
-        distance={2.8}
-        intensity={initialLampStrength * 3.6}
-        penumbra={0.9}
+        decay={0}
+        distance={1.6}
+        intensity={initialLampStrength * 3.2}
+        penumbra={0.5}
         position={[lightCone.bulb.x, lightCone.bulb.y, lightCone.bulb.z]}
         ref={lampPointLightRef}
         shadow-bias={-0.0003}

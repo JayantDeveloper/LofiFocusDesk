@@ -142,6 +142,15 @@ export function SeatedCameraControls({ enabled = true }) {
   }, [enabled]);
 
   useFrame(() => {
+    // Dev-only: pin the camera to an exact pose for visual verification, e.g.
+    // window.__forceCameraPose = { position: [x,y,z], lookAt: [x,y,z] }
+    if (import.meta.env.DEV && window.__forceCameraPose) {
+      const pose = window.__forceCameraPose;
+      camera.position.set(pose.position[0], pose.position[1], pose.position[2]);
+      lookTarget.current.set(pose.lookAt[0], pose.lookAt[1], pose.lookAt[2]);
+      camera.lookAt(lookTarget.current);
+      return;
+    }
     controlState.current.currentYaw = MathUtils.lerp(
       controlState.current.currentYaw,
       controlState.current.targetYaw,
